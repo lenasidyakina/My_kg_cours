@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CubePropertiesDialog</class>
+ <widget class="QDialog" name="CubePropertiesDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>CubePropertiesDialog</string>
+  </property>
+  <widget class="QDialogButtonBox" name="buttonBox">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>250</y>
+     <width>152</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>16</y>
+     <width>81</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Edge length:</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_2">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>50</y>
+     <width>81</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Color:</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="edtEdge">
+   <property name="geometry">
+    <rect>
+     <x>110</x>
+     <y>20</y>
+     <width>251</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="edtColor">
+   <property name="geometry">
+    <rect>
+     <x>110</x>
+     <y>60</y>
+     <width>251</width>
+     <height>21</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButton">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>250</y>
+     <width>75</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>PushButton</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
