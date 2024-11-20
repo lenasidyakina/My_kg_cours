@@ -9,6 +9,7 @@
 #include <QListWidget>
 #include <QSettings>
 #include <QMessageBox>
+#include <QTimer>
 
 
 #include "SettingsDialog.h"
@@ -56,9 +57,13 @@ MainWindow::MainWindow() {
     gbl->addWidget(btnRemoveFigure);
     connect(btnRemoveFigure, &QPushButton::released, this, &MainWindow::handleRemoveFigure);
 
-    QPushButton * btnSettings = new QPushButton(tr("Settings"));
+    auto btnSettings = new QPushButton(tr("Settings"));
     gbl->addWidget(btnSettings);
     connect(btnSettings, &QPushButton::released, this, &MainWindow::handleSettings);
+
+    auto btnStart = new QPushButton(tr("Start"));
+    gbl->addWidget(btnStart);
+    connect(btnStart, &QPushButton::released, this, &MainWindow::startAnimation);
 
 
     gb->setLayout(gbl);
@@ -69,6 +74,9 @@ MainWindow::MainWindow() {
     setWindowTitle(tr("Cursovoj project"));
     setMinimumSize(480, 240);
     resize(640, 480);
+
+    animationTimer = new QTimer(this);
+    connect(animationTimer, &QTimer::timeout, this, &MainWindow::updateScene);
 }
 
 void MainWindow::handleSettings() {
@@ -80,17 +88,13 @@ void MainWindow::handleSettings() {
 }
 
 //https://doc.qt.io/qt-6/qtwidgets-painting-basicdrawing-example.html
-void MainWindow::updateScene()
-{
-    mainPanel->invalidate();
-}
 
 void MainWindow::handleNewFigure() {
     FigureSelectorDialog * dlg = new FigureSelectorDialog(this);
     if (dlg->exec() == QDialog::Accepted) {
         int sel = dlg->getSelection();
         if (sel == FIGURE_CUBE) {
-            Cube * cube = new Cube(DEFAULT_FIGURE_COLOR, DEFAULT_CUBE_EDGE_LENGTH);
+            Cube * cube = new Cube(DEFAULT_FIGURE_COLOR, DEFAULT_CUBE_EDGE_LENGTH, 0, 0);
             CubePropertiesDialog * cpd = new CubePropertiesDialog(cube);
             if (cpd->exec() == QDialog::Accepted) {
                 figureList.append(cube); // delete ?
@@ -178,4 +182,77 @@ void MainWindow::handleRemoveFigure() {
         delete f;
     }
 }
+
+// Новый слот для запуска анимации
+void MainWindow::startAnimation() {
+    if (animationTimer->isActive()) {
+        animationTimer->stop(); // Останавливаем таймер, если он уже работает
+    } else {
+        animationTimer->start(16); // Запускаем таймер с интервалом ~16 мс (60 FPS)
+    }
+}
+
+void MainWindow::drawTrajectory() {
+    QPainter painter(mainPanel);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Центр сцены
+    float centerX = mainPanel->width() / 2;
+    float centerY = mainPanel->height() / 2;
+
+    // Радиус сферы
+    float sphereRadius =  100;
+
+    // Цвет для траектории
+    painter.setPen(QPen(QColor(255, 0, 0), 2));  // Красная линия
+
+    // Отрисовываем окружность (траекторию)
+    painter.drawEllipse(QPointF(centerX, centerY), sphereRadius, sphereRadius);
+}
+
+Point3D sphericalToCartesian_r(float radius, float theta, float phi) {
+    Point3D result;
+
+    // Преобразование из сферических координат в декартовы
+    result.x = radius * sin(theta) * cos(phi);
+    result.y = radius * sin(theta) * sin(phi);
+    result.z = radius * cos(theta);
+
+    return result;
+}
+// Метод обновления сцены
+void MainWindow::updateScene() {
+    drawTrajectory();  // Рисуем траекторию
+
+    // Логика обновления координат куба на сфере
+    for (auto figure : figureList) {
+        if (auto cube = dynamic_cast<Cube*>(figure)) {
+            // Увеличиваем угол phi для движения вдоль окружности
+            cube->phi += 0.01f; // Скорость движения вдоль окружности
+            if (cube->phi >= 2 * M_PI) cube->phi -= 2 * M_PI;
+
+            // Фиксируем theta для плоскости сечения
+            cube->theta = M_PI / 2; // Фиксированное значение для сечения
+
+            // Радиус сферы
+            float sphereRadius = 100;
+
+            // Позиция середины нижней грани куба
+            Point3D bottomCenter = sphericalToCartesian_r(sphereRadius, cube->theta, cube->phi);
+
+            // Размер куба
+            float edge = cube->EdgeLength;
+            float halfEdge = edge / 2.0f;
+
+            // Смещаем нижнюю грань куба, чтобы она касалась сферы
+            // Мы смещаем точку вниз по оси Z на половину длины ребра куба
+
+            // Обновляем позицию куба
+            cube->position = bottomCenter;
+        }
+    }
+
+    mainPanel->invalidate(); // Перерисовка сцены
+}
+
 

@@ -24,12 +24,15 @@ private:
     static QList<Figure*> figureList;
     QListWidget * figureListWigdet;
     void updateScene();
+    QTimer *animationTimer;
 private slots:
     void handleSettings();
     void handleNewFigure();
     void handleEditFigure();
     void handleRemoveFigure();
+    void startAnimation();
 
+    void drawTrajectory();
 };
 
 

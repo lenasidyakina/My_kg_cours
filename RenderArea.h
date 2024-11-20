@@ -7,6 +7,8 @@
 
 
 #include <QWidget>
+
+#include "Cube.h"
 #include "Figure.h"
 
 
@@ -18,9 +20,9 @@ public:
 protected:
     QBrush bkgndBrush;
     void paintEvent(QPaintEvent *event) override;
+
+
     const QList<Figure*> & FigureList();
-
-
 };
 
 

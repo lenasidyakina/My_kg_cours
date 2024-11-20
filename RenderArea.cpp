@@ -3,6 +3,7 @@
 //
 
 #include <QPainter>
+#include <cmath>
 #include "RenderArea.h"
 #include "SettingsDialog.h"
 #include "MainWindow.h"
@@ -11,23 +12,6 @@
 #include "Cylinder.h"
 #include "Tetrader.h"
 
-struct Point3D {
-    float x, y, z; // 3D-координаты точки
-
-    Point3D(float x = 0, float y = 0, float z = 0) : x(x), y(y), z(z) {}
-};
-
-QPointF projectTo2D(const Point3D& point) {
-    // Простой способ проекции с использованием перспективы
-    float fov = 1000.0f;  // Уровень перспективы
-    float projectedX = (point.x / (point.z + fov)) * fov;
-    float projectedY = (point.y / (point.z + fov)) * fov;
-    return QPointF(projectedX, projectedY);
-}
-
-bool isEdgeVisible(const Point3D& p1, const Point3D& p2) {
-    return p1.z > 0 && p2.z > 0;
-}
 
 RenderArea::RenderArea(QWidget *parent)
         : QWidget(parent)
@@ -50,89 +34,74 @@ const QList<Figure*> & RenderArea::FigureList()
 }
 
 
-void Cube::Draw(QPainter *painter, Cube *cube) {
+// Преобразование сферических координат в декартовые
+Point3D sphericalToCartesian(float radius, float theta, float phi) {
+    return Point3D(
+        radius * sin(theta) * cos(phi),
+        radius * sin(theta) * sin(phi),
+        radius * cos(theta)
+    );
+}
+
+// Куб
+void Cube::Draw(QPainter* painter, Cube* cube, Sphere* sphere) {
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // Устанавливаем цвет заливки
+    // Цвет куба
     painter->setBrush(QColor::fromRgb(cube->color));
     painter->setPen(Qt::black);
 
-    // Центрирование куба в области рисования
-    int edge = cube->EdgeLength;
-    int x = (painter->device()->width() - edge) / 2;
-    int y = (painter->device()->height() - edge) / 2;
+    // Центр экрана
+    float centerX = painter->device()->width() / 2.0f;
+    float centerY = painter->device()->height() / 2.0f;
 
-    // Смещение для эффекта трёхмерности
-    int offset = edge / 4;
+    // Позиция нижней грани куба относительно сферы
+    Point3D bottomCenter = sphericalToCartesian(sphere->RadiusLength, cube->theta, cube->phi);
 
-    // Координаты вершин куба
-    QPoint frontTopLeft(x, y);
-    QPoint frontTopRight(x + edge, y);
-    QPoint frontBottomLeft(x, y + edge);
-    QPoint frontBottomRight(x + edge, y + edge);
+    // Размер куба
+    float edge = cube->EdgeLength;
+    float halfEdge = edge / 2.0f;
 
-    QPoint backTopLeft(x + offset, y - offset);
-    QPoint backTopRight(x + edge + offset, y - offset);
-    QPoint backBottomLeft(x + offset, y + edge - offset);
-    QPoint backBottomRight(x + edge + offset, y + edge - offset);
-
-    // Рисуем грани куба
-
-    // 1. Задняя грань
-    QPolygon backFace;
-    backFace << backTopLeft << backTopRight << backBottomRight << backBottomLeft;
-    painter->drawPolygon(backFace);
-
-    // 2. Верхняя грань
-    QPolygon topFace;
-    topFace << frontTopLeft << frontTopRight << backTopRight << backTopLeft;
-    painter->drawPolygon(topFace);
-
-    // 3. Передняя грань
-    QPolygon frontFace;
-    frontFace << frontTopLeft << frontTopRight << frontBottomRight << frontBottomLeft;
-    painter->drawPolygon(frontFace);
-
-    // 4. Левая грань
-    QPolygon leftFace;
-    leftFace << frontTopLeft << backTopLeft << backBottomLeft << frontBottomLeft;
-    painter->drawPolygon(leftFace);
-
-    // 5. Правая грань
-    QPolygon rightFace;
-    rightFace << frontTopRight << backTopRight << backBottomRight << frontBottomRight;
-    painter->drawPolygon(rightFace);
-
-    // Прорисовываем рёбра
-
-    painter->setPen(Qt::black);
-
-    // Функция для рисования рёбер, которая проверяет, виден ли ребро
-    auto drawEdge = [&](QPoint p1, QPoint p2) {
-        // Убираем невидимые рёбра, которые за другими гранями
-        if (true) {
-            painter->drawLine(p1, p2);
-        }
+    // Вычисление вершин куба относительно его центра
+    Point3D vertices[8] = {
+        {bottomCenter.x - halfEdge, bottomCenter.y - halfEdge, bottomCenter.z - halfEdge},
+        {bottomCenter.x + halfEdge, bottomCenter.y - halfEdge, bottomCenter.z - halfEdge},
+        {bottomCenter.x + halfEdge, bottomCenter.y + halfEdge, bottomCenter.z - halfEdge},
+        {bottomCenter.x - halfEdge, bottomCenter.y + halfEdge, bottomCenter.z - halfEdge},
+        {bottomCenter.x - halfEdge, bottomCenter.y - halfEdge, bottomCenter.z + halfEdge},
+        {bottomCenter.x + halfEdge, bottomCenter.y - halfEdge, bottomCenter.z + halfEdge},
+        {bottomCenter.x + halfEdge, bottomCenter.y + halfEdge, bottomCenter.z + halfEdge},
+        {bottomCenter.x - halfEdge, bottomCenter.y + halfEdge, bottomCenter.z + halfEdge},
     };
 
-    // Передние рёбра
-    drawEdge(frontTopLeft, frontTopRight); // Верхнее переднее ребро
-    drawEdge(frontTopLeft, frontBottomLeft); // Левое переднее ребро
-    drawEdge(frontTopRight, frontBottomRight); // Правое переднее ребро
-    drawEdge(frontBottomLeft, frontBottomRight); // Нижнее переднее ребро
+    // Функция проекции 3D в 2D
+    auto projectTo2D = [&](const Point3D& point) {
+        float fov = 1000.0f; // Поле зрения
+        float depth = point.z + fov; // Учитываем смещение по оси Z
+        if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
 
-    // Задние рёбра
-    drawEdge(backTopLeft, backTopRight); // Верхнее заднее ребро
-    drawEdge(backTopLeft, backBottomLeft); // Левое заднее ребро
-    drawEdge(backTopRight, backBottomRight); // Правое заднее ребро
-    drawEdge(backBottomLeft, backBottomRight); // Нижнее заднее ребро
+        float projectedX = (point.x / depth) * fov + centerX;
+        float projectedY = (point.y / depth) * fov + centerY;
+        return QPointF(projectedX, projectedY);
+    };
 
-    // Рёбра, соединяющие переднюю и заднюю грань
-    drawEdge(frontTopLeft, backTopLeft); // Левое соединяющее ребро
-    drawEdge(frontTopRight, backTopRight); // Правое соединяющее ребро
-    drawEdge(frontBottomLeft, backBottomLeft); // Левое нижнее соединяющее ребро
-    drawEdge(frontBottomRight, backBottomRight); // Правое нижнее соединяющее ребро
+    // Рёбра куба
+    int edges[12][2] = {
+        {0, 1}, {1, 2}, {2, 3}, {3, 0}, // Нижняя грань
+        {4, 5}, {5, 6}, {6, 7}, {7, 4}, // Верхняя грань
+        {0, 4}, {1, 5}, {2, 6}, {3, 7}  // Соединительные рёбра
+    };
+
+    // Рисуем рёбра куба
+    for (const auto& edge : edges) {
+        QPointF p1 = projectTo2D(vertices[edge[0]]);
+        QPointF p2 = projectTo2D(vertices[edge[1]]);
+        painter->drawLine(p1, p2);
+    }
 }
+
+
+
 
 QPoint CalculateVertex(int x_center, int y_center, int radius, double theta, double phi) {
     int x = x_center + radius * sin(theta) * cos(phi);
@@ -367,14 +336,14 @@ void RenderArea::paintEvent(QPaintEvent *) {
     pen.setStyle(Qt::SolidLine);
     painter.setPen(pen);
 
-    Sphere * sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
-    sphere->Draw_base_sphere(&painter, sphere);
+    Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
+    base_sphere->Draw_base_sphere(&painter, base_sphere);
 
     for (Figure *fig : FigureList()) {
         int ft = fig->GetType();
         if (ft == FIGURE_CUBE) {
             Cube *cube = static_cast<Cube *>(fig);
-            cube->Draw(&painter, cube); // Используем функцию отрисовки куба
+            cube->Draw(&painter, cube, base_sphere); // Используем функцию отрисовки куба
         } else if (ft == FIGURE_SPHERE) {
             Sphere *sphere = static_cast<Sphere *>(fig);
             sphere->Draw(&painter, sphere);
@@ -388,5 +357,6 @@ void RenderArea::paintEvent(QPaintEvent *) {
         }
     }
 }
+
 
 
