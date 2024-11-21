@@ -10,7 +10,7 @@
 #include <QSettings>
 #include <QMessageBox>
 #include <QTimer>
-
+#include <deque>
 
 #include "SettingsDialog.h"
 #include "FigureSelectorDialog.h"
@@ -22,6 +22,7 @@
 #include "MainWindow.h"
 
 #include "Cylinder.h"
+#include "TrajectoryPropertiesDialog.h"
 
 QList<Figure*> MainWindow::figureList;
 
@@ -65,6 +66,14 @@ MainWindow::MainWindow() {
     gbl->addWidget(btnStart);
     connect(btnStart, &QPushButton::released, this, &MainWindow::startAnimation);
 
+    auto btnStop = new QPushButton(tr("Stop")); // Создаем кнопку Stop
+    gbl->addWidget(btnStop); // Добавляем кнопку в интерфейс
+    connect(btnStop, &QPushButton::released, this, &MainWindow::stopAnimation); // Привязываем слот
+
+    auto btnChangeTrajectiry = new QPushButton(tr("Change trajectiry"));
+    gbl->addWidget(btnChangeTrajectiry);
+    connect(btnChangeTrajectiry, &QPushButton::released, this, &MainWindow::handleChangeTrajectiry);
+
 
     gb->setLayout(gbl);
     layout->addWidget(gb);
@@ -87,6 +96,14 @@ void MainWindow::handleSettings() {
     delete dlg;
 }
 
+void MainWindow::handleChangeTrajectiry() {
+    Trajectory *trajectory = new Trajectory(0,0,0); // Инициализация объекта
+    auto dlg = new TrajectoryPropertiesDialog(trajectory, this);
+    if (dlg->exec() == QDialog::Accepted) {
+        updateScene();
+    }
+    delete dlg;
+}
 //https://doc.qt.io/qt-6/qtwidgets-painting-basicdrawing-example.html
 
 void MainWindow::handleNewFigure() {
@@ -192,22 +209,10 @@ void MainWindow::startAnimation() {
     }
 }
 
-void MainWindow::drawTrajectory() {
-    QPainter painter(mainPanel);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    // Центр сцены
-    float centerX = mainPanel->width() / 2;
-    float centerY = mainPanel->height() / 2;
-
-    // Радиус сферы
-    float sphereRadius =  100;
-
-    // Цвет для траектории
-    painter.setPen(QPen(QColor(255, 0, 0), 2));  // Красная линия
-
-    // Отрисовываем окружность (траекторию)
-    painter.drawEllipse(QPointF(centerX, centerY), sphereRadius, sphereRadius);
+void MainWindow::stopAnimation() {
+    if (animationTimer->isActive()) {
+        animationTimer->stop(); // Останавливаем таймер
+    }
 }
 
 Point3D sphericalToCartesian_r(float radius, float theta, float phi) {
@@ -220,39 +225,37 @@ Point3D sphericalToCartesian_r(float radius, float theta, float phi) {
 
     return result;
 }
+
+
 // Метод обновления сцены
 void MainWindow::updateScene() {
-    drawTrajectory();  // Рисуем траекторию
+    //drawTrajectory();  // Рисуем траекторию
 
-    // Логика обновления координат куба на сфере
     for (auto figure : figureList) {
         if (auto cube = dynamic_cast<Cube*>(figure)) {
-            // Увеличиваем угол phi для движения вдоль окружности
             cube->phi += 0.01f; // Скорость движения вдоль окружности
             if (cube->phi >= 2 * M_PI) cube->phi -= 2 * M_PI;
 
-            // Фиксируем theta для плоскости сечения
             cube->theta = M_PI / 2; // Фиксированное значение для сечения
 
-            // Радиус сферы
-            float sphereRadius = 100;
+            float sphereRadius = 100; // Радиус сферы
+            float edge = cube->EdgeLength; // Размер ребра куба
+            float halfEdge = edge / 2.0f;
 
             // Позиция середины нижней грани куба
             Point3D bottomCenter = sphericalToCartesian_r(sphereRadius, cube->theta, cube->phi);
 
-            // Размер куба
-            float edge = cube->EdgeLength;
-            float halfEdge = edge / 2.0f;
-
-            // Смещаем нижнюю грань куба, чтобы она касалась сферы
-            // Мы смещаем точку вниз по оси Z на половину длины ребра куба
-
-            // Обновляем позицию куба
-            cube->position = bottomCenter;
+            // Смещаем центр куба вверх на половину ребра куба
+            cube->position = {
+                bottomCenter.x,
+                bottomCenter.y,
+                bottomCenter.z + halfEdge * bottomCenter.z / sphereRadius
+            };
         }
     }
 
     mainPanel->invalidate(); // Перерисовка сцены
 }
+
 
 

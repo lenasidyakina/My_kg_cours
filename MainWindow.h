@@ -27,12 +27,16 @@ private:
     QTimer *animationTimer;
 private slots:
     void handleSettings();
+
+    void handleChangeTrajectiry();
+
     void handleNewFigure();
     void handleEditFigure();
     void handleRemoveFigure();
     void startAnimation();
 
-    void drawTrajectory();
+    void stopAnimation();
+
 };
 
 

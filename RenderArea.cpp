@@ -3,6 +3,7 @@
 //
 
 #include <QPainter>
+#include <deque>
 #include <cmath>
 #include "RenderArea.h"
 #include "SettingsDialog.h"
@@ -11,6 +12,7 @@
 #include "Sphere.h"
 #include "Cylinder.h"
 #include "Tetrader.h"
+#include "Trajectory.h"
 
 
 RenderArea::RenderArea(QWidget *parent)
@@ -43,47 +45,80 @@ Point3D sphericalToCartesian(float radius, float theta, float phi) {
     );
 }
 
+QPointF RenderArea::projectTo2D(const Point3D& point, float centerX, float centerY) {
+    float fov = 1000.0f; // Поле зрения
+    float depth = point.z + fov; // Учитываем смещение по оси Z
+    if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
+
+    float projectedX = (point.x / depth) * fov + centerX;
+    float projectedY = (point.y / depth) * fov + centerY;
+    return QPointF(projectedX, projectedY);
+}
+
+
+QPointF projectTo2D(const Point3D& point, float centerX, float centerY) {
+    float fov = 1000.0f; // Поле зрения
+    float depth = point.z + fov; // Учитываем смещение по оси Z
+    if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
+
+    float projectedX = (point.x / depth) * fov + centerX;
+    float projectedY = (point.y / depth) * fov + centerY;
+    return QPointF(projectedX, projectedY);
+}
 // Куб
-void Cube::Draw(QPainter* painter, Cube* cube, Sphere* sphere) {
+void Cube::Draw(QPainter* painter, Cube* cube, Sphere* sphere, int color) {
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // Цвет куба
-    painter->setBrush(QColor::fromRgb(cube->color));
+    // Цвет рёбер куба
     painter->setPen(Qt::black);
 
     // Центр экрана
     float centerX = painter->device()->width() / 2.0f;
     float centerY = painter->device()->height() / 2.0f;
 
-    // Позиция нижней грани куба относительно сферы
-    Point3D bottomCenter = sphericalToCartesian(sphere->RadiusLength, cube->theta, cube->phi);
+    // Позиция на сфере, вычисленная из углов theta и phi
+    Point3D trajectoryPoint = sphericalToCartesian(sphere->RadiusLength, cube->theta, cube->phi);
 
-    // Размер куба
-    float edge = cube->EdgeLength;
-    float halfEdge = edge / 2.0f;
+    // Центр куба, чтобы нижняя грань касалась сферы
+    float halfEdge = cube->EdgeLength / 2.0f;
+    Point3D cubeCenter = {
+        trajectoryPoint.x,
+        trajectoryPoint.y,
+        trajectoryPoint.z + halfEdge // Поднимаем центр куба выше точки касания
+    };
 
     // Вычисление вершин куба относительно его центра
     Point3D vertices[8] = {
-        {bottomCenter.x - halfEdge, bottomCenter.y - halfEdge, bottomCenter.z - halfEdge},
-        {bottomCenter.x + halfEdge, bottomCenter.y - halfEdge, bottomCenter.z - halfEdge},
-        {bottomCenter.x + halfEdge, bottomCenter.y + halfEdge, bottomCenter.z - halfEdge},
-        {bottomCenter.x - halfEdge, bottomCenter.y + halfEdge, bottomCenter.z - halfEdge},
-        {bottomCenter.x - halfEdge, bottomCenter.y - halfEdge, bottomCenter.z + halfEdge},
-        {bottomCenter.x + halfEdge, bottomCenter.y - halfEdge, bottomCenter.z + halfEdge},
-        {bottomCenter.x + halfEdge, bottomCenter.y + halfEdge, bottomCenter.z + halfEdge},
-        {bottomCenter.x - halfEdge, bottomCenter.y + halfEdge, bottomCenter.z + halfEdge},
+        {cubeCenter.x - halfEdge, cubeCenter.y - halfEdge, cubeCenter.z - halfEdge},
+        {cubeCenter.x + halfEdge, cubeCenter.y - halfEdge, cubeCenter.z - halfEdge},
+        {cubeCenter.x + halfEdge, cubeCenter.y + halfEdge, cubeCenter.z - halfEdge},
+        {cubeCenter.x - halfEdge, cubeCenter.y + halfEdge, cubeCenter.z - halfEdge},
+        {cubeCenter.x - halfEdge, cubeCenter.y - halfEdge, cubeCenter.z + halfEdge},
+        {cubeCenter.x + halfEdge, cubeCenter.y - halfEdge, cubeCenter.z + halfEdge},
+        {cubeCenter.x + halfEdge, cubeCenter.y + halfEdge, cubeCenter.z + halfEdge},
+        {cubeCenter.x - halfEdge, cubeCenter.y + halfEdge, cubeCenter.z + halfEdge},
     };
 
-    // Функция проекции 3D в 2D
-    auto projectTo2D = [&](const Point3D& point) {
-        float fov = 1000.0f; // Поле зрения
-        float depth = point.z + fov; // Учитываем смещение по оси Z
-        if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
-
-        float projectedX = (point.x / depth) * fov + centerX;
-        float projectedY = (point.y / depth) * fov + centerY;
-        return QPointF(projectedX, projectedY);
+    // Грани куба
+    int faces[6][4] = {
+        {0, 1, 2, 3}, // Нижняя грань
+        {4, 5, 6, 7}, // Верхняя грань
+        {0, 1, 5, 4}, // Передняя грань
+        {1, 2, 6, 5}, // Правая грань
+        {2, 3, 7, 6}, // Задняя грань
+        {3, 0, 4, 7}  // Левая грань
     };
+
+    // Рисуем грани куба
+    QColor qColor = QColor::fromRgb(color);
+    painter->setBrush(qColor);
+    for (const auto& face : faces) {
+        QPolygonF polygon;
+        for (int i = 0; i < 4; ++i) {
+            polygon << projectTo2D(vertices[face[i]], centerX, centerY);
+        }
+        painter->drawPolygon(polygon);
+    }
 
     // Рёбра куба
     int edges[12][2] = {
@@ -94,11 +129,12 @@ void Cube::Draw(QPainter* painter, Cube* cube, Sphere* sphere) {
 
     // Рисуем рёбра куба
     for (const auto& edge : edges) {
-        QPointF p1 = projectTo2D(vertices[edge[0]]);
-        QPointF p2 = projectTo2D(vertices[edge[1]]);
+        QPointF p1 = projectTo2D(vertices[edge[0]], centerX, centerY);
+        QPointF p2 = projectTo2D(vertices[edge[1]], centerX, centerY);
         painter->drawLine(p1, p2);
     }
 }
+
 
 
 
@@ -326,37 +362,118 @@ void Sphere::Draw_base_sphere(QPainter *painter, Sphere *sphere) {
     painter->drawEllipse(sphereRect);
 }
 
+QPointF projectTo2D_t(float x, float y, float z, float centerX, float centerY) {
+    // Проекция на 2D
+    // Здесь предполагается, что z влияет на масштабирование (можно добавить перспективу)
+    return QPointF(centerX + x, centerY - y);  // Преобразование для 2D
+}
+
+void RenderArea::drawTrajectory(QPainter *painter, const Trajectory &trajectory) {
+    QColor color = QColor::fromRgb(trajectory.color);
+    painter->setPen(QPen(color));
+
+    float phiRad = trajectory.phi * M_PI / 180.0f;  // Угол по оси XY
+    float thetaRad = trajectory.theta * M_PI / 180.0f;  // Угол по оси XZ
+    int r = 100;  // Радиус для эллипса
+
+    float centerX = painter->device()->width() / 2.0f;  // Центр экрана по X
+    float centerY = painter->device()->height() / 2.0f;  // Центр экрана по Y
+
+    // Величины для эллипса
+    float cosPhi = cos(phiRad);
+    float sinPhi = sin(phiRad);
+    float cosTheta = cos(thetaRad);
+    float sinTheta = sin(thetaRad);
+
+    // Для хранения последней и первой точек
+    QPointF lastPoint;
+    QPointF firstPoint;
+
+    // Количество точек для отрисовки (чем больше, тем плавнее эллипс)
+    const int steps = 360;
+
+    for (int i = 0; i < steps; i++) {
+        // Угол для генерации точек на окружности
+        float angle = i * M_PI * 2 / steps;
+
+        // Координаты эллипса в 3D пространстве
+        float x = r * cos(angle);
+        float y = r * sin(angle) * cosPhi;  // Учитываем угол phi
+        float z = r * sin(angle) * sinTheta;  // Учитываем угол theta
+
+        // Преобразование в пространство с наклоненной плоскостью
+        float xRot = x * cosTheta - z * sinTheta;
+        float yRot = y;
+        float zRot = x * sinTheta + z * cosTheta;
+
+        // Преобразуем 3D-координаты в 2D
+        QPointF projectedPoint = projectTo2D_t(xRot, yRot, zRot, centerX, centerY);
+
+        // Если это не первая точка, рисуем линию от последней точки до текущей
+        if (i > 0) {
+            painter->drawLine(lastPoint, projectedPoint);
+        }
+
+        // Сохраняем текущую точку как последнюю
+        lastPoint = projectedPoint;
+
+        // Сохраняем первую точку для замыкания эллипса
+        if (i == 0) {
+            firstPoint = projectedPoint;
+        }
+    }
+
+    // Замыкаем эллипс, рисуя линию от последней точки к первой
+    painter->drawLine(lastPoint, firstPoint);
+}
+
+
+
+
+
 
 void RenderArea::paintEvent(QPaintEvent *) {
     QPainter painter(this);
     painter.setBrush(bkgndBrush);
     painter.drawRect(QRect(0, 0, width() - 1, height() - 1));
+    painter.setRenderHint(QPainter::Antialiasing);
 
-    QPen pen;
-    pen.setStyle(Qt::SolidLine);
-    painter.setPen(pen);
-
+    // Отрисовываем базовую сферу
     Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
     base_sphere->Draw_base_sphere(&painter, base_sphere);
 
+    // Центр экрана
+    float centerX = painter.device()->width() / 2.0f;
+    float centerY = painter.device()->height() / 2.0f;
+
+    // Радиус сферы
+    float radius = base_sphere->RadiusLength;
+
+    // Пример создания траектории
+    Trajectory trajectory("red", 0, 45);  // Пример с углами phi = 45, theta = 30, цвет - красный
+
+    // Рисуем траекторию
+    drawTrajectory(&painter, trajectory);
+
+    // Отрисовываем фигуры
     for (Figure *fig : FigureList()) {
         int ft = fig->GetType();
         if (ft == FIGURE_CUBE) {
             Cube *cube = static_cast<Cube *>(fig);
-            cube->Draw(&painter, cube, base_sphere); // Используем функцию отрисовки куба
+            cube->Draw(&painter, cube, base_sphere, fig->color); // Используем функцию отрисовки куба
         } else if (ft == FIGURE_SPHERE) {
             Sphere *sphere = static_cast<Sphere *>(fig);
             sphere->Draw(&painter, sphere);
         } else if (ft == FIGURE_CYLINDER) {
             Cylinder *cylinder = static_cast<Cylinder *>(fig);
             cylinder->Draw(&painter, cylinder);
-        }
-        else if (ft == FIGURE_PYRAMID) {
+        } else if (ft == FIGURE_PYRAMID) {
             Tetrader *tetrader = static_cast<Tetrader *>(fig);
             tetrader->Draw(&painter, tetrader);
         }
     }
 }
+
 
 
 

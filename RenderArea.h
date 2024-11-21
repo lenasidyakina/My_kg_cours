@@ -10,6 +10,7 @@
 
 #include "Cube.h"
 #include "Figure.h"
+#include "Trajectory.h"
 
 
 class RenderArea : public QWidget {
@@ -19,6 +20,13 @@ public:
     void invalidate();
 protected:
     QBrush bkgndBrush;
+
+
+    QPointF projectTo2D(const Point3D &point, float centerX, float centerY);
+
+
+    void drawTrajectory(QPainter *painter, const Trajectory &trajectory);
+
     void paintEvent(QPaintEvent *event) override;
 
 

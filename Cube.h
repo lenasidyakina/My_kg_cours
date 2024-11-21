@@ -24,12 +24,12 @@ public:
     int EdgeLength;
     float theta = 0;
     float phi = 0;
-    Point3D position;
+    Point3D position = (0,0,0);
     virtual void Draw() override;
     virtual QString getName() override;
     virtual int GetType() override;
 
-    void Draw(QPainter *painter, Cube *cube, Sphere *sphere);
+    void Draw(QPainter *painter, Cube *cube, Sphere *sphere, int color);
 
 };
 

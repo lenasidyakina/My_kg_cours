@@ -47,6 +47,11 @@ add_executable(qtest main.cpp
         TetraderPropertiesDialog.ui
         Tetrader.cpp
         Tetrader.h
+        TrajectoryPropertiesDialog.cpp
+        TrajectoryPropertiesDialog.h
+        TrajectoryPropertiesDialog.ui
+        Trajectory.cpp
+        Trajectory.h
 )
 target_link_libraries(qtest
         Qt::Core
