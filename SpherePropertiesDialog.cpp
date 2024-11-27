@@ -11,6 +11,7 @@ SpherePropertiesDialog::SpherePropertiesDialog(Sphere * sphere, QWidget *parent)
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this,&SpherePropertiesDialog::OnOk);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     ui->edtRadius->setText(QString("%1").arg(sphere->RadiusLength));
+    //ui->edtSpeed->setText(QString("%1").arg(sphere->RadiusLength));
     ui->edtColor->setText(QString("#%1").arg(sphere->color, 6, 16, QLatin1Char('0')).toUpper());
 
 }

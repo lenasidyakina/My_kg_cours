@@ -25,7 +25,7 @@ protected:
     QPointF projectTo2D(const Point3D &point, float centerX, float centerY);
 
 
-    void drawTrajectory(QPainter *painter, const Trajectory &trajectory);
+    void drawTrajectory(QPainter *painter, const Trajectory *trajectory);
 
     void paintEvent(QPaintEvent *event) override;
 

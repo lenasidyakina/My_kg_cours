@@ -35,7 +35,6 @@ const QList<Figure*> & RenderArea::FigureList()
     return MainWindow::FigureList();
 }
 
-
 // Преобразование сферических координат в декартовые
 Point3D sphericalToCartesian(float radius, float theta, float phi) {
     return Point3D(
@@ -187,7 +186,7 @@ void Sphere::Draw(QPainter *painter, Sphere *sphere) {
         }
 
         // Рисуем рёбра (опционально)
-        painter->setPen(Qt::black);
+        painter->setPen(Qt::gray);
         for (int i = 0; i < sphere->stacks; ++i) {
             double theta1 = (i * M_PI) / sphere->stacks;
             double theta2 = ((i + 1) * M_PI) / sphere->stacks;
@@ -368,67 +367,53 @@ QPointF projectTo2D_t(float x, float y, float z, float centerX, float centerY) {
     return QPointF(centerX + x, centerY - y);  // Преобразование для 2D
 }
 
-void RenderArea::drawTrajectory(QPainter *painter, const Trajectory &trajectory) {
-    QColor color = QColor::fromRgb(trajectory.color);
+void RenderArea::drawTrajectory(QPainter *painter, const Trajectory *trajectory) {
+    QColor color = QColor::fromRgb(trajectory->color);
     painter->setPen(QPen(color));
 
-    float phiRad = trajectory.phi * M_PI / 180.0f;  // Угол по оси XY
-    float thetaRad = trajectory.theta * M_PI / 180.0f;  // Угол по оси XZ
-    int r = 100;  // Радиус для эллипса
+    float phiRad = trajectory->phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
+    float thetaRad = trajectory->theta * M_PI / 180.0f;  // Угол отклонения (theta)
+    int r = 100;  // Радиус сферы
 
     float centerX = painter->device()->width() / 2.0f;  // Центр экрана по X
     float centerY = painter->device()->height() / 2.0f;  // Центр экрана по Y
 
-    // Величины для эллипса
-    float cosPhi = cos(phiRad);
-    float sinPhi = sin(phiRad);
-    float cosTheta = cos(thetaRad);
-    float sinTheta = sin(thetaRad);
-
-    // Для хранения последней и первой точек
     QPointF lastPoint;
-    QPointF firstPoint;
+    bool lastVisible = false; // Видимость предыдущей точки
+    const int steps = 360; // Количество точек для отрисовки эллипса
 
-    // Количество точек для отрисовки (чем больше, тем плавнее эллипс)
-    const int steps = 360;
+    for (int i = 0; i <= steps; i++) {
+        float angle = i * 2 * M_PI / steps;  // Угол для генерации точек на эллипсе
 
-    for (int i = 0; i < steps; i++) {
-        // Угол для генерации точек на окружности
-        float angle = i * M_PI * 2 / steps;
-
-        // Координаты эллипса в 3D пространстве
+        // Координаты эллипса в локальной системе
         float x = r * cos(angle);
-        float y = r * sin(angle) * cosPhi;  // Учитываем угол phi
-        float z = r * sin(angle) * sinTheta;  // Учитываем угол theta
+        float y = r * sin(angle);
 
-        // Преобразование в пространство с наклоненной плоскостью
-        float xRot = x * cosTheta - z * sinTheta;
-        float yRot = y;
-        float zRot = x * sinTheta + z * cosTheta;
+        // Поворот плоскости на угол phi вокруг оси X
+        float yRotPhi = y * cos(phiRad);
+        float zRotPhi = y * sin(phiRad);
 
-        // Преобразуем 3D-координаты в 2D
-        QPointF projectedPoint = projectTo2D_t(xRot, yRot, zRot, centerX, centerY);
+        // Поворот на угол theta вокруг оси Z
+        float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
+        float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
+        float zRot = yRotPhi;  // Z после поворота вокруг Z
 
-        // Если это не первая точка, рисуем линию от последней точки до текущей
-        if (i > 0) {
+        // Угол между точкой и наблюдателем
+        float dotProduct = zRot; // Проверяем только Z-компонент, т.к. наблюдатель смотрит вдоль оси Z
+        bool currentVisible = dotProduct >= 0; // Если точка "перед" наблюдателем
+
+        // Преобразование в экранные координаты
+        QPointF projectedPoint(centerX + xRot, centerY - yRot);
+
+        // Если точка видима, рисуем линию
+        if (i > 0 && (lastVisible || currentVisible)) {
             painter->drawLine(lastPoint, projectedPoint);
         }
 
-        // Сохраняем текущую точку как последнюю
         lastPoint = projectedPoint;
-
-        // Сохраняем первую точку для замыкания эллипса
-        if (i == 0) {
-            firstPoint = projectedPoint;
-        }
+        lastVisible = currentVisible;
     }
-
-    // Замыкаем эллипс, рисуя линию от последней точки к первой
-    painter->drawLine(lastPoint, firstPoint);
 }
-
-
-
 
 
 
@@ -440,8 +425,7 @@ void RenderArea::paintEvent(QPaintEvent *) {
 
     // Отрисовываем базовую сферу
     Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
-    base_sphere->Draw_base_sphere(&painter, base_sphere);
-
+    base_sphere->Draw(&painter, base_sphere);
     // Центр экрана
     float centerX = painter.device()->width() / 2.0f;
     float centerY = painter.device()->height() / 2.0f;
@@ -450,10 +434,11 @@ void RenderArea::paintEvent(QPaintEvent *) {
     float radius = base_sphere->RadiusLength;
 
     // Пример создания траектории
-    Trajectory trajectory("red", 0, 45);  // Пример с углами phi = 45, theta = 30, цвет - красный
+    Trajectory trajectory("red", 30, 0);  // Пример с углами phi = 45, theta = 30, цвет - красный
+    drawTrajectory(&painter, &trajectory);
 
     // Рисуем траекторию
-    drawTrajectory(&painter, trajectory);
+    //drawTrajectory(&painter, MainWindow::trajectory);
 
     // Отрисовываем фигуры
     for (Figure *fig : FigureList()) {
@@ -474,6 +459,27 @@ void RenderArea::paintEvent(QPaintEvent *) {
     }
 }
 
+// Для хранения последней и первой точек
+// QPointF lastPoint;
+// float x = r * cos(phiRad);
+// float y = r * sin(phiRad);
+// float z = 0;
+// lastPoint = projectTo2D_t(x, y, z, centerX, centerY);
+// QPointF lastPoint;
+// float phi = trajectory->phi * M_PI / 180.0f;
+// float theta = 0;
+// float dphi = 0.5;
+//
+// for (int i = 0; i < 100; i++) {
+//     phi -= dphi;
+//     theta += dphi;
+//     float x_1 = r * sin(theta) * cos(phi);
+//     float y_1 = r * cos(theta) * sin(phi);
+//     float z_1 = r * cos(theta);
+//     QPointF projectedPoint = projectTo2D_t(x_1, y_1, z_1, centerX, centerY);
+//     painter->drawLine(lastPoint, projectedPoint);
+//     lastPoint = projectedPoint;
+// }
 
 
 

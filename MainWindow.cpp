@@ -25,6 +25,7 @@
 #include "TrajectoryPropertiesDialog.h"
 
 QList<Figure*> MainWindow::figureList;
+//Trajectory *trajectory;
 
 MainWindow::MainWindow() {
     auto widget = new QWidget;
@@ -97,9 +98,10 @@ void MainWindow::handleSettings() {
 }
 
 void MainWindow::handleChangeTrajectiry() {
-    Trajectory *trajectory = new Trajectory(0,0,0); // Инициализация объекта
-    auto dlg = new TrajectoryPropertiesDialog(trajectory, this);
+    Trajectory *trajectory_new = new Trajectory(DEFAULT_FIGURE_COLOR,0,0); // Инициализация объекта
+    TrajectoryPropertiesDialog * dlg = new TrajectoryPropertiesDialog(trajectory_new, this);
     if (dlg->exec() == QDialog::Accepted) {
+        //trajectory = trajectory_new;
         updateScene();
     }
     delete dlg;
