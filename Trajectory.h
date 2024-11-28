@@ -18,9 +18,9 @@ public:
         this->theta = theta;
         this->color = ColorToInt(color);
     }
-    int color;
-    int phi;
-    int theta;
+    int color = 958;
+    int phi = 0;
+    int theta = 0;
     static uint ColorToInt(const QString color)
     {
         bool ok;

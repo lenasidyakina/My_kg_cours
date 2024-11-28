@@ -25,7 +25,8 @@
 #include "TrajectoryPropertiesDialog.h"
 
 QList<Figure*> MainWindow::figureList;
-//Trajectory *trajectory;
+
+Trajectory * MainWindow::trajectory = new Trajectory(DEFAULT_TRAJECTORY_COLOR ,40,30);
 
 MainWindow::MainWindow() {
     auto widget = new QWidget;
@@ -98,8 +99,8 @@ void MainWindow::handleSettings() {
 }
 
 void MainWindow::handleChangeTrajectiry() {
-    Trajectory *trajectory_new = new Trajectory(DEFAULT_FIGURE_COLOR,0,0); // Инициализация объекта
-    TrajectoryPropertiesDialog * dlg = new TrajectoryPropertiesDialog(trajectory_new, this);
+    //Trajectory *trajectory_new = new Trajectory(DEFAULT_FIGURE_COLOR,0,0); // Инициализация объекта
+    TrajectoryPropertiesDialog * dlg = new TrajectoryPropertiesDialog(trajectory, this);
     if (dlg->exec() == QDialog::Accepted) {
         //trajectory = trajectory_new;
         updateScene();
@@ -228,36 +229,76 @@ Point3D sphericalToCartesian_r(float radius, float theta, float phi) {
     return result;
 }
 
+Point3D normalize(const Point3D& v) {
+    float magnitude = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (magnitude == 0.0f) {
+        throw std::runtime_error("Cannot normalize a zero-length vector.");
+    }
+    return {v.x / magnitude, v.y / magnitude, v.z / magnitude};
+}
+
+Point3D crossProduct_1(const Point3D& a, const Point3D& b) {
+    return {
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
+    };
+}
+
+float magnitude(const Point3D& v) {
+    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
 
 // Метод обновления сцены
 void MainWindow::updateScene() {
-    //drawTrajectory();  // Рисуем траекторию
-
+    // Пробегаем по всем фигурам и обновляем их
     for (auto figure : figureList) {
         if (auto cube = dynamic_cast<Cube*>(figure)) {
-            cube->phi += 0.01f; // Скорость движения вдоль окружности
+            // Обновление углов для анимации
+            cube->phi += 0.01f;
             if (cube->phi >= 2 * M_PI) cube->phi -= 2 * M_PI;
 
-            cube->theta = M_PI / 2; // Фиксированное значение для сечения
-
-            float sphereRadius = 100; // Радиус сферы
-            float edge = cube->EdgeLength; // Размер ребра куба
+            // Параметры для траектории и куба
+            float sphereRadius = 100;
+            float edge = cube->EdgeLength;
             float halfEdge = edge / 2.0f;
 
-            // Позиция середины нижней грани куба
+            // Вычисляем точку на траектории
             Point3D bottomCenter = sphericalToCartesian_r(sphereRadius, cube->theta, cube->phi);
 
-            // Смещаем центр куба вверх на половину ребра куба
-            cube->position = {
+            // Центр куба (включая его половину стороны)
+            Point3D cubeCenter = {
                 bottomCenter.x,
                 bottomCenter.y,
-                bottomCenter.z + halfEdge * bottomCenter.z / sphereRadius
+                bottomCenter.z + halfEdge
             };
+
+            // Нормаль к поверхности
+            Point3D normal = normalize(cubeCenter);
+            Point3D upVector(0, 1, 0); // Направление вверх
+
+            // Вычисляем тангенциальный вектор (перпендикулярно нормали)
+            Point3D tangentVector = crossProduct_1(normal, upVector);
+
+            if (magnitude(tangentVector) < 1e-6) {
+                upVector = {1, 0, 0}; // Если тангенциальный вектор близок к нулю, выбираем другой вектор
+                tangentVector = crossProduct_1(normal, upVector);
+            }
+
+            // Нормализуем все векторы
+            tangentVector = normalize(tangentVector);
+            upVector = normalize(crossProduct_1(tangentVector, normal));
+
+            // Обновляем координаты и ориентируем куб
+            cube->updateVertices(normal, tangentVector, upVector, cubeCenter);
         }
     }
 
-    mainPanel->invalidate(); // Перерисовка сцены
+    // Запрос на перерисовку панели
+    mainPanel->invalidate(); // Вызов перерисовки
 }
+
 
 
 

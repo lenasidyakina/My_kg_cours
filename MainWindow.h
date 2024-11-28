@@ -12,6 +12,14 @@
 #include "RenderArea.h"
 #include "Figure.h"
 #include "Trajectory.h"
+#include "RenderArea.h"
+#include "SettingsDialog.h"
+#include "MainWindow.h"
+#include "Cube.h"
+#include "Sphere.h"
+#include "Cylinder.h"
+#include "Tetrader.h"
+#include "Trajectory.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -19,7 +27,7 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow();
     static QList<Figure*> & FigureList() { return figureList; }
-    //static Trajectory *trajectory;
+    static Trajectory *trajectory;
 
 private:
     RenderArea * mainPanel;
