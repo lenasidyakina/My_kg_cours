@@ -12,14 +12,7 @@
 #include "RenderArea.h"
 #include "Figure.h"
 #include "Trajectory.h"
-#include "RenderArea.h"
-#include "SettingsDialog.h"
 #include "MainWindow.h"
-#include "Cube.h"
-#include "Sphere.h"
-#include "Cylinder.h"
-#include "Tetrader.h"
-#include "Trajectory.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT

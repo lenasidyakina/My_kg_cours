@@ -4,6 +4,7 @@
 
 #include <QVBoxLayout>
 #include <QMenuBar>
+#include <QVector3D>
 #include <QGroupBox>
 #include <QPushButton>
 #include <QListWidget>
@@ -250,54 +251,46 @@ float magnitude(const Point3D& v) {
 }
 
 
-// Метод обновления сцены
 void MainWindow::updateScene() {
-    // Пробегаем по всем фигурам и обновляем их
+    // Нет необходимости создавать base_sphere в updateScene
+    // Вместо этого используйте уже существующую сферу (если она есть)
+
+    // Пример обновления углов траектории для движения куба
     for (auto figure : figureList) {
-        if (auto cube = dynamic_cast<Cube*>(figure)) {
-            // Обновление углов для анимации
-            cube->phi += 0.01f;
-            if (cube->phi >= 2 * M_PI) cube->phi -= 2 * M_PI;
+        if (auto* cube = dynamic_cast<Cube*>(figure)) {
+            // Обновление углов траектории для движения куба
+            trajectory->phi += 1.0f; // Угловая скорость по оси phi
+            trajectory->theta += 1.0f; // Угловая скорость по оси theta
 
-            // Параметры для траектории и куба
-            float sphereRadius = 100;
-            float edge = cube->EdgeLength;
-            float halfEdge = edge / 2.0f;
+            // Ограничения для углов
+            if (trajectory->phi > 360.0f) trajectory->phi -= 360.0f;
+            if (trajectory->phi < 0.0f) trajectory->phi += 360.0f;
+            if (trajectory->theta > 360.0f) trajectory->theta -= 360.0f;
+            if (trajectory->theta < 0.0f) trajectory->theta += 360.0f;
 
-            // Вычисляем точку на траектории
-            Point3D bottomCenter = sphericalToCartesian_r(sphereRadius, cube->theta, cube->phi);
+            // Расчет новой позиции куба
+            float phiRad = trajectory->phi * M_PI / 180.0f;
+            float thetaRad = trajectory->theta * M_PI / 180.0f;
+            int r = 100;
 
-            // Центр куба (включая его половину стороны)
-            Point3D cubeCenter = {
-                bottomCenter.x,
-                bottomCenter.y,
-                bottomCenter.z + halfEdge
-            };
+            // Обновление координат куба
+            float x = r * sin(thetaRad) * cos(phiRad);
+            float y = r * sin(thetaRad) * sin(phiRad);
+            float z = r * cos(thetaRad);
 
-            // Нормаль к поверхности
-            Point3D normal = normalize(cubeCenter);
-            Point3D upVector(0, 1, 0); // Направление вверх
-
-            // Вычисляем тангенциальный вектор (перпендикулярно нормали)
-            Point3D tangentVector = crossProduct_1(normal, upVector);
-
-            if (magnitude(tangentVector) < 1e-6) {
-                upVector = {1, 0, 0}; // Если тангенциальный вектор близок к нулю, выбираем другой вектор
-                tangentVector = crossProduct_1(normal, upVector);
-            }
-
-            // Нормализуем все векторы
-            tangentVector = normalize(tangentVector);
-            upVector = normalize(crossProduct_1(tangentVector, normal));
-
-            // Обновляем координаты и ориентируем куб
-            cube->updateVertices(normal, tangentVector, upVector, cubeCenter);
+            // Обновляем позицию куба
+            cube->position = QVector3D(x, y, z);
         }
     }
 
-    // Запрос на перерисовку панели
-    mainPanel->invalidate(); // Вызов перерисовки
+    // Перерисовка экрана
+    update(); // Обновление окна
 }
+
+
+
+
+
 
 
 

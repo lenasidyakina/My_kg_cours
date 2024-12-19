@@ -1,4 +1,5 @@
 #include <QPainter>
+#include <QVector3D>
 #include <deque>
 #include <cmath>
 #include "RenderArea.h"
@@ -10,6 +11,7 @@
 #include "Tetrader.h"
 #include "Trajectory.h"
 
+Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
 
 RenderArea::RenderArea(QWidget *parent)
         : QWidget(parent)
@@ -77,139 +79,113 @@ void normalize(Point3D &v) {
 }
 
 
-void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory, int color) {
-    // Параметры траектории и куба
+void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory) {
+    painter->setPen(QPen(Qt::black)); // Цвет рёбер
+    QColor cubeColor = QColor::fromRgb(cube->color);
+    painter->setBrush(QBrush(cubeColor, Qt::SolidPattern));
+
     float phiRad = trajectory->phi * M_PI / 180.0f;
     float thetaRad = trajectory->theta * M_PI / 180.0f;
     int r = sphere->RadiusLength;
-    int edge = cube->EdgeLength;
 
     float centerX = painter->device()->width() / 2.0f;
     float centerY = painter->device()->height() / 2.0f;
 
-    Point3D closest3DPoint;
-    Point3D tangentVector;
-    float minZ = std::numeric_limits<float>::max();
+    QVector3D closestPoint3D;
+    float closestZ = -std::numeric_limits<float>::max();
     const int steps = 360;
-
-    // Найти точку на траектории, наиболее близкую к наблюдателю
-    for (int i = 0; i < steps; i++) {
-        float angle = i * 2 * M_PI / steps;  // Угол для генерации точек на эллипсе
-
-        // Координаты эллипса в локальной системе
+    for (int i = 0; i <= steps; i++) {
+        float angle = i * 2 * M_PI / steps;
         float x = r * cos(angle);
         float y = r * sin(angle);
-
-        // Поворот плоскости на угол phi вокруг оси X
         float yRotPhi = y * cos(phiRad);
         float zRotPhi = y * sin(phiRad);
-
-        // Поворот на угол theta вокруг оси Z
         float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
         float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
-        float zRot = yRotPhi;  // Z после поворота вокруг Z
+        float zRot = yRotPhi;
 
-        // Определение ближайшей точки на траектории
-        if (zRot >= 0 && zRot < minZ) {
-            minZ = zRot;
-            closest3DPoint = Point3D(xRot, y, zRot);
-
-            // Вычисление тангенциального вектора для направления
-            float dx = -r * sin(angle);
-            float dy = r * cos(angle) * cos(phiRad);
-            float dz = r * cos(angle) * sin(phiRad);
-
-            float dxRot = dx * cos(thetaRad) - dz * sin(thetaRad);
-            float dzRot = dx * sin(thetaRad) + dz * cos(thetaRad);
-
-            tangentVector = Point3D(dxRot, dy, dzRot);
+        if (zRot > closestZ) {
+            closestZ = zRot;
+            closestPoint3D = QVector3D(xRot, yRot, zRot);
         }
     }
 
-    // Куб должен располагаться с нижней гранью на траектории
-    cube->position = closest3DPoint;
+    float size = cube->EdgeLength;
 
-    // Вектор нормали вверх, перпендикулярный траектории
-    Point3D upVector(0, 1, 0); // Направление вверх
-    Point3D sideVector = crossProduct(tangentVector, upVector);  // Вектор боковой грани
-    upVector = crossProduct(sideVector, tangentVector);           // Пересчитываем вектор вверх
+    QVector3D normalToPlane(sin(phiRad) * sin(thetaRad), -sin(phiRad) * cos(thetaRad), cos(phiRad));
+    QVector3D axisParallel(cos(thetaRad), sin(thetaRad), 0);
+    QVector3D axisPerpendicular = QVector3D::crossProduct(normalToPlane, axisParallel);
 
-    // Нормализация всех векторов
-    normalize(tangentVector);
-    normalize(upVector);
-    normalize(sideVector);
+    QVector3D cubeBaseCenter = closestPoint3D - 2 * normalToPlane * (size / 2.0f);
 
-    std::vector<Point3D> vertices;
-    float halfEdge = edge / 2.0f;
+    QVector3D vertices[8] = {
+        cubeBaseCenter - axisParallel * size / 2 - axisPerpendicular * size / 2,
+        cubeBaseCenter + axisParallel * size / 2 - axisPerpendicular * size / 2,
+        cubeBaseCenter + axisParallel * size / 2 + axisPerpendicular * size / 2,
+        cubeBaseCenter - axisParallel * size / 2 + axisPerpendicular * size / 2,
+        cubeBaseCenter - axisParallel * size / 2 - axisPerpendicular * size / 2 + normalToPlane * size,
+        cubeBaseCenter + axisParallel * size / 2 - axisPerpendicular * size / 2 + normalToPlane * size,
+        cubeBaseCenter + axisParallel * size / 2 + axisPerpendicular * size / 2 + normalToPlane * size,
+        cubeBaseCenter - axisParallel * size / 2 + axisPerpendicular * size / 2 + normalToPlane * size
+    };
 
-    // Позиционируем вершины куба относительно ближайшей точки на траектории
-    for (int dx = -1; dx <= 1; dx += 2) {
-        for (int dy = -1; dy <= 1; dy += 2) {
-            for (int dz = -1; dz <= 1; dz += 2) {
-                vertices.push_back(
-                    Point3D(
-                        closest3DPoint.x + dx * halfEdge * sideVector.x +
-                        dy * halfEdge * upVector.x +
-                        dz * halfEdge * tangentVector.x,
+    QVector<QPointF> projectedVertices;
+    for (const auto &v : vertices) {
+        projectedVertices.append(QPointF(centerX + v.x(), centerY - v.y()));
+    }
 
-                        closest3DPoint.y + dx * halfEdge * sideVector.y +
-                        dy * halfEdge * upVector.y +
-                        dz * halfEdge * tangentVector.y,
+    int faces[6][4] = {
+        {0, 1, 2, 3},
+        {4, 5, 6, 7},
+        {0, 1, 5, 4},
+        {1, 2, 6, 5},
+        {2, 3, 7, 6},
+        {3, 0, 4, 7}
+    };
 
-                        closest3DPoint.z + dx * halfEdge * sideVector.z +
-                        dy * halfEdge * upVector.z +
-                        dz * halfEdge * tangentVector.z
-                    )
-                );
+    QVector3D faceNormals[6];
+    for (int i = 0; i < 6; i++) {
+        QVector3D v1 = vertices[faces[i][1]] - vertices[faces[i][0]];
+        QVector3D v2 = vertices[faces[i][2]] - vertices[faces[i][0]];
+        faceNormals[i] = QVector3D::crossProduct(v1, v2).normalized();
+    }
+
+    QVector3D observer(0, 0, -1); // Наблюдатель смотрит вдоль оси Z
+
+    for (int i = 0; i < 6; i++) {
+        if (QVector3D::dotProduct(faceNormals[i], observer) < 0) {
+            QPolygonF polygon;
+            for (int j = 0; j < 4; j++) {
+                polygon.append(projectedVertices[faces[i][j]]);
+            }
+            painter->drawConvexPolygon(polygon); // Рисуем только видимые грани
+        }
+    }
+
+
+
+    int edges[12][2] = {
+        {0, 1}, {1, 2}, {2, 3}, {3, 0},
+        {4, 5}, {5, 6}, {6, 7}, {7, 4},
+        {0, 4}, {1, 5}, {2, 6}, {3, 7}
+    };
+
+    for (const auto &edge : edges) {
+        bool visible = false;
+        for (int i = 0; i < 6; i++) {
+            if (QVector3D::dotProduct(faceNormals[i], observer) <= 0) {
+                if (std::find(std::begin(faces[i]), std::end(faces[i]), edge[0]) != std::end(faces[i]) &&
+                    std::find(std::begin(faces[i]), std::end(faces[i]), edge[1]) != std::end(faces[i])) {
+                    visible = true;
+                    break;
+                }
             }
         }
-    }
-
-    std::vector<QPointF> projectedVertices;
-    for (const auto &v : vertices) {
-        projectedVertices.push_back(QPointF(centerX + v.x, centerY - v.y));
-    }
-
-    // Определение рёбер куба для отрисовки
-    static const int edges[12][2] = {
-        {0, 1}, {1, 3}, {3, 2}, {2, 0}, // Нижняя грань
-        {4, 5}, {5, 7}, {7, 6}, {6, 4}, // Верхняя грань
-        {0, 4}, {1, 5}, {2, 6}, {3, 7}  // Связь между гранями
-    };
-
-    // Отрисовка граней куба с исходным цветом
-    painter->setBrush(QColor(color)); // Установить цвет
-    painter->setPen(Qt::NoPen); // Убрать контуры для граней
-
-    static const int faces[6][4] = {
-        {0, 1, 3, 2}, // Нижняя грань
-        {4, 5, 7, 6}, // Верхняя грань
-        {0, 1, 5, 4}, // Передняя грань
-        {2, 3, 7, 6}, // Задняя грань
-        {1, 3, 7, 5}, // Правая грань
-        {0, 2, 6, 4}  // Левая грань
-    };
-
-    // Отрисовка граней
-    for (const auto &face : faces) {
-        QPolygonF polygon;
-        for (int i = 0; i < 4; i++) {
-            polygon << projectedVertices[face[i]];
+        if (visible) {
+            painter->drawLine(projectedVertices[edge[0]], projectedVertices[edge[1]]);
         }
-        painter->drawPolygon(polygon);
-    }
-
-    // Отрисовка рёбер куба
-    QPen blackPen(Qt::black);
-    painter->setPen(blackPen);
-    for (const auto &edge : edges) {
-        painter->drawLine(projectedVertices[edge[0]], projectedVertices[edge[1]]);
     }
 }
-
-
-
-
 
 QPoint CalculateVertex(int x_center, int y_center, int radius, double theta, double phi) {
     int x = x_center + radius * sin(theta) * cos(phi);
@@ -495,7 +471,7 @@ void RenderArea::paintEvent(QPaintEvent *) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Отрисовываем базовую сферу
-    Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
+    //Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
     //MainWindow::trajectory = new Trajectory(DEFAULT_TRAJECTORY_COLOR ,0,0);
     base_sphere->Draw(&painter, base_sphere);
     // Центр экрана
@@ -517,7 +493,7 @@ void RenderArea::paintEvent(QPaintEvent *) {
         int ft = fig->GetType();
         if (ft == FIGURE_CUBE) {
             Cube *cube = static_cast<Cube *>(fig);
-            cube->Draw(&painter, cube, base_sphere, MainWindow::trajectory, fig->color); // Используем функцию отрисовки куба
+            cube->Draw(&painter, cube, base_sphere, MainWindow::trajectory); // Используем функцию отрисовки куба
         } else if (ft == FIGURE_SPHERE) {
             Sphere *sphere = static_cast<Sphere *>(fig);
             sphere->Draw(&painter, sphere);

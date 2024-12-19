@@ -4,6 +4,7 @@
 
 #include <QMetaType>
 #include <qpainter.h>
+#include <QVector3D>
 
 #include "Figure.h"
 #include "Sphere.h"
@@ -11,6 +12,7 @@
 
 struct Point3D {
     float x, y, z;
+    Point3D(const QVector3D& vec) : x(vec.x()), y(vec.y()), z(vec.z()) {}
 
     Point3D(float x = 0, float y = 0, float z = 0) : x(x), y(y), z(z) {}
     Point3D operator*(float scalar) const {
@@ -47,7 +49,7 @@ public:
 
     virtual int GetType() override;
 
-    void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory, int color);
+    void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory);
 
 };
 
