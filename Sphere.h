@@ -1,6 +1,3 @@
-//
-// Created by sidya on 19.11.2024.
-//
 
 #ifndef SPHERE_H
 #define SPHERE_H
@@ -10,6 +7,7 @@
 #include <qpainter.h>
 
 #include "Figure.h"
+#include "Trajectory.h"
 
 
 class Sphere : public Figure {
@@ -25,9 +23,17 @@ public:
     int slices = DEFAULT_SLICES; // Количество секторов по горизонтали
     int stacks = DEFAULT_STACKS; // Количество секторов по вертикали
 
-    void Draw(QPainter *painter, Sphere *cube);
 
-    void Draw_base_sphere(QPainter *painter, Sphere *sphere);
+    void DrawGlobe(QPainter *painter, Sphere *sphere);
+
+    QVector3D CalculateVertex3D(const QVector3D &contactPoint, float radius, double theta, double phi);
+
+    void Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajectory *trajectory);
+    QVector3D center; // Центр тетраэдра
+
+    QVector3D getPosition() const {
+        return center; // Возвращаем центр тетраэдра
+    }
 };
 
 Q_DECLARE_METATYPE( Sphere )

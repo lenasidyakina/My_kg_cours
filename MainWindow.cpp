@@ -1,6 +1,4 @@
-//
-// Created by Ivan Sidyakin on 06.11.2024.
-//
+
 
 #include <QVBoxLayout>
 #include <QMenuBar>
@@ -88,7 +86,13 @@ MainWindow::MainWindow() {
     resize(640, 480);
 
     animationTimer = new QTimer(this);
-    connect(animationTimer, &QTimer::timeout, this, &MainWindow::updateScene);
+    connect(animationTimer, &QTimer::timeout, this, &MainWindow::move);
+
+}
+
+void MainWindow::move() {
+    trajectory->step = (trajectory->step + 1) % 360;
+    mainPanel->repaint();
 }
 
 void MainWindow::handleSettings() {
@@ -209,7 +213,7 @@ void MainWindow::startAnimation() {
     if (animationTimer->isActive()) {
         animationTimer->stop(); // Останавливаем таймер, если он уже работает
     } else {
-        animationTimer->start(16); // Запускаем таймер с интервалом ~16 мс (60 FPS)
+        animationTimer->start(100); // Запускаем таймер с интервалом ~16 мс (60 FPS)
     }
 }
 
@@ -254,7 +258,7 @@ float magnitude(const Point3D& v) {
 void MainWindow::updateScene() {
     // Нет необходимости создавать base_sphere в updateScene
     // Вместо этого используйте уже существующую сферу (если она есть)
-
+#if 0
     // Пример обновления углов траектории для движения куба
     for (auto figure : figureList) {
         if (auto* cube = dynamic_cast<Cube*>(figure)) {
@@ -285,6 +289,9 @@ void MainWindow::updateScene() {
 
     // Перерисовка экрана
     update(); // Обновление окна
+#endif
+    mainPanel->repaint();
+
 }
 
 

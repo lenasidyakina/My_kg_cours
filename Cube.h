@@ -50,6 +50,11 @@ public:
     virtual int GetType() override;
 
     void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory);
+    QVector3D center; // Центр тетраэдра
+
+    QVector3D getPosition() const {
+        return center; // Возвращаем центр тетраэдра
+    }
 
 };
 

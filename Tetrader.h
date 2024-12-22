@@ -6,6 +6,7 @@
 #include <qpainter.h>
 
 #include "Figure.h"
+#include "Sphere.h"
 
 
 class Tetrader : public Figure {
@@ -23,6 +24,12 @@ public:
 
     void Draw(QPainter *painter, Tetrader *tetrader);
 
+    void Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedron, Trajectory *trajectory);
+    QVector3D center; // Центр тетраэдра
+
+    QVector3D getPosition() const {
+        return center; // Возвращаем центр тетраэдра
+    }
 };
 
 Q_DECLARE_METATYPE( Tetrader )

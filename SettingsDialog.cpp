@@ -1,8 +1,3 @@
-//
-// Created by Ivan Sidyakin on 08.11.2024.
-//
-
-// You may need to build the project (run Qt uic code generator) to get "ui_SettingsDialog.h" resolved
 
 #include <QColorDialog>
 #include <QSettings>

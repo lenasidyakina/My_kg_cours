@@ -1,8 +1,3 @@
-//
-// Created by sidya on 21.11.2024.
-//
-
-// You may need to build the project (run Qt uic code generator) to get "ui_TrajectoryPropertiesDialog.h" resolved
 
 #include "TrajectoryPropertiesDialog.h"
 

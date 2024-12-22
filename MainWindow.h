@@ -39,6 +39,7 @@ private slots:
     void startAnimation();
 
     void stopAnimation();
+    void move();
 
 };
 

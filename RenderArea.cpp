@@ -14,6 +14,11 @@
 
 Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
 
+const QList<Figure*> & RenderArea::FigureList()
+{
+    return MainWindow::FigureList();
+}
+
 RenderArea::RenderArea(QWidget *parent)
         : QWidget(parent)
 {
@@ -27,11 +32,6 @@ void RenderArea::invalidate()
 {
     bkgndBrush.setColor(SettingsDialog::backgroundColor());
     update();
-}
-
-const QList<Figure*> & RenderArea::FigureList()
-{
-    return MainWindow::FigureList();
 }
 
 // Преобразование сферических координат в декартовые
@@ -108,6 +108,7 @@ QVector3D getTrajectoryPoint(const Trajectory *trajectory, int step, int steps)
     return QVector3D(xRot, yRot, zRot);
 }
 
+
 void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory) {
     painter->setPen(QPen(Qt::black));
     QColor cubeColor = QColor::fromRgb(cube->color);
@@ -147,6 +148,14 @@ void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *traje
             baseCenter + tangent * size / 2 + perpendicular * size / 2 + normalToPlane * size, // 6
             baseCenter - tangent * size / 2 + perpendicular * size / 2 + normalToPlane * size  // 7
     };
+
+    // Расчёт координат центра куба (среднее значение всех вершин)
+    QVector3D cubeCenter(0, 0, 0);
+    for (int i = 0; i < 8; i++) {
+        cubeCenter += vertices[i];
+    }
+    cubeCenter /= 8.0f;  // Среднее значение
+    cube->center = cubeCenter;
 
     QVector<QPointF> projectedVertices;
     for (const auto &v : vertices) {

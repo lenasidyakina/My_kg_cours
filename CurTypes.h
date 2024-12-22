@@ -1,6 +1,3 @@
-//
-// Created by Ivan Sidyakin on 08.11.2024.
-//
 
 #ifndef CURS_CURTYPES_H
 #define CURS_CURTYPES_H

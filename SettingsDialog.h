@@ -1,6 +1,4 @@
-//
-// Created by Ivan Sidyakin on 08.11.2024.
-//
+
 
 #ifndef CURS_SETTINGSDIALOG_H
 #define CURS_SETTINGSDIALOG_H

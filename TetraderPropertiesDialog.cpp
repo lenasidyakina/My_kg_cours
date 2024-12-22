@@ -1,8 +1,3 @@
-//
-// Created by sidya on 19.11.2024.
-//
-
-// You may need to build the project (run Qt uic code generator) to get "ui_TetraderPropertiesDialog.h" resolved
 
 #include "TetraderPropertiesDialog.h"
 #include "ui_TetraderPropertiesDialog.h"

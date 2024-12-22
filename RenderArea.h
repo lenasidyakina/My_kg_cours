@@ -1,6 +1,4 @@
-//
-// Created by Ivan Sidyakin on 10.11.2024.
-//
+
 
 #ifndef CURS_RENDERAREA_H
 #define CURS_RENDERAREA_H

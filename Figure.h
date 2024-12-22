@@ -6,6 +6,7 @@
 #define CURS_FIGURE_H
 
 #include <QString>
+#include <QVector3D>
 #include "CurTypes.h"
 
 
