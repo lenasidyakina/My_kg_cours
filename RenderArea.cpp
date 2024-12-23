@@ -12,9 +12,9 @@
 #include "Tetrader.h"
 #include "Trajectory.h"
 
-Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
+Sphere *base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
 
-const QList<Figure*> & RenderArea::FigureList()
+const QList<Figure *> &RenderArea::FigureList()
 {
     return MainWindow::FigureList();
 }
@@ -37,13 +37,13 @@ void RenderArea::invalidate()
 // Преобразование сферических координат в декартовые
 Point3D sphericalToCartesian(float radius, float theta, float phi) {
     return Point3D(
-        radius * sin(theta) * cos(phi),
-        radius * sin(theta) * sin(phi),
-        radius * cos(theta)
+            radius * sin(theta) * cos(phi),
+            radius * sin(theta) * sin(phi),
+            radius * cos(theta)
     );
 }
 
-QPointF RenderArea::projectTo2D(const Point3D& point, float centerX, float centerY) {
+QPointF RenderArea::projectTo2D(const Point3D &point, float centerX, float centerY) {
     float fov = 1000.0f; // Поле зрения
     float depth = point.z + fov; // Учитываем смещение по оси Z
     if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
@@ -54,7 +54,7 @@ QPointF RenderArea::projectTo2D(const Point3D& point, float centerX, float cente
 }
 
 
-QPointF projectTo2D(const Point3D& point, float centerX, float centerY) {
+QPointF projectTo2D(const Point3D &point, float centerX, float centerY) {
     float fov = 1000.0f; // Поле зрения
     float depth = point.z + fov; // Учитываем смещение по оси Z
     if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
@@ -66,9 +66,9 @@ QPointF projectTo2D(const Point3D& point, float centerX, float centerY) {
 
 Point3D crossProduct(const Point3D &a, const Point3D &b) {
     return Point3D(
-        a.y * b.z - a.z * b.y,
-        a.z * b.x - a.x * b.z,
-        a.x * b.y - a.y * b.x
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x
     );
 }
 
@@ -109,7 +109,7 @@ QVector3D getTrajectoryPoint(const Trajectory *trajectory, int step, int steps)
 }
 
 
-void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory) {
+void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory, std::vector<Poly> &polys) {
     painter->setPen(QPen(Qt::black));
     QColor cubeColor = QColor::fromRgb(cube->color);
     painter->setBrush(QBrush(cubeColor, Qt::SolidPattern));
@@ -157,9 +157,9 @@ void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *traje
     cubeCenter /= 8.0f;  // Среднее значение
     cube->center = cubeCenter;
 
-    QVector<QPointF> projectedVertices;
+    QVector<QVector3D> projectedVertices;
     for (const auto &v : vertices) {
-        projectedVertices.append(QPointF(centerX + v.x(), centerY - v.y()));
+        projectedVertices.append(QVector3D(centerX + v.x(), centerY - v.y(), v.z()));
     }
 
     int faces[6][4] = {
@@ -174,41 +174,17 @@ void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *traje
         faceNormals[i] = QVector3D::crossProduct(v1, v2).normalized();
     }
 
-    QVector3D observer(0, 0, -1);
-
     // Отрисовка граней
     for (int i = 0; i < 6; i++) {
         bool isBottomFace = false;
 
-        // Определяем нижнюю грань (она будет направлена в противоположную сторону от нормали)
-        if (QVector3D::dotProduct(faceNormals[i], observer) < 0) {
-            // Если это нижняя грань (ориентирована вниз), то красим ее в красный
-            if (i == 1) {  // Нижняя грань бгранью с индексом 0 (в примере)
-                isBottomFace = true;
-                painter->setBrush(QBrush(Qt::red, Qt::SolidPattern));
-            }
-            else if (i == 5) {  // Нижняя грань будет гранью с индексом 0 (в примере)
-                isBottomFace = true;
-                painter->setBrush(QBrush(Qt::blue, Qt::SolidPattern));
-            } else {
-                painter->setBrush(QBrush(cubeColor, Qt::SolidPattern));  // Все остальные грани обычного цвета
-            }
-
-            QPolygonF polygon;
-            for (int j = 0; j < 4; j++) {
-                polygon.append(projectedVertices[faces[i][j]]);
-            }
-            painter->drawConvexPolygon(polygon);
-        }
-    }
-
-    // Отрисовка линий (рёбер)
-    for (int i = 0; i < 6; i++) {
+        Poly polygon;
         for (int j = 0; j < 4; j++) {
-            int start = faces[i][j];
-            int end = faces[i][(j + 1) % 4];
-            painter->drawLine(projectedVertices[start], projectedVertices[end]);
+            polygon.push_back(projectedVertices[faces[i][j]]);
         }
+        polygon.set_color(QColor(255, 0, 0));
+        std::reverse(std::begin(polygon), std::end(polygon));
+        polys.push_back(polygon);
     }
 }
 
@@ -232,7 +208,7 @@ void drawEdge(QPainter *painter, QPoint p1, QPoint p2) {
     painter->drawLine(p1, p2);
 }
 
-void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajectory *trajectory) {
+void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajectory *trajectory, std::vector<Poly> &polys) {
     painter->setPen(QPen(Qt::black));
 
     // Центр устройства (экран отрисовки)
@@ -288,9 +264,9 @@ void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajec
     }
 
     // Преобразование вершин в 2D-координаты для отрисовки
-    QVector<QPointF> projectedVertices;
+    QVector<QVector3D> projectedVertices;
     for (const auto &vertex : vertices) {
-        projectedVertices.append(QPointF(centerX + vertex.x(), centerY - vertex.y()));
+        projectedVertices.append(QVector3D(centerX + vertex.x(), centerY - vertex.y(), vertex.z()));
     }
 
     // Отрисовка полигонов (граней между сегментами)
@@ -299,14 +275,14 @@ void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajec
         for (int j = 0; j < longitudeSegments; ++j) {
             int index1 = i * (longitudeSegments + 1) + j;
             int index2 = index1 + longitudeSegments + 1;
-
-            QPolygonF polygon;
+            polys.push_back({ projectedVertices[index1], projectedVertices[index1 + 1], projectedVertices[index2 + 1], projectedVertices[index2] });
+            /*QPolygonF polygon;
             polygon.append(projectedVertices[index1]);
             polygon.append(projectedVertices[index1 + 1]);
             polygon.append(projectedVertices[index2 + 1]);
             polygon.append(projectedVertices[index2]);
 
-            painter->drawConvexPolygon(polygon);
+            painter->drawConvexPolygon(polygon);*/
         }
     }
 }
@@ -315,7 +291,7 @@ void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajec
 
 
 
-void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, Trajectory *trajectory) {
+void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, Trajectory *trajectory, std::vector<Poly> &polys) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     // Устанавливаем цвет заливки
@@ -372,26 +348,26 @@ void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, 
     }
 
     // Преобразование в 2D для отрисовки
-    QVector<QPointF> projectedBottom, projectedTop;
+    Poly projectedBottom, projectedTop;
     for (const auto &vertex : bottomVertices) {
-        projectedBottom.append(QPointF(centerX + vertex.x(), centerY - vertex.y()));
+        projectedBottom.push_back(QVector3D(centerX + vertex.x(), centerY - vertex.y(), vertex.z()));
     }
     for (const auto &vertex : topVertices) {
-        projectedTop.append(QPointF(centerX + vertex.x(), centerY - vertex.y()));
+        projectedTop.push_back(QVector3D(centerX + vertex.x(), centerY - vertex.y(), vertex.z()));
     }
 
     // Отрисовка верхнего и нижнего кругов
-    painter->drawPolygon(projectedBottom);
-    painter->drawPolygon(projectedTop);
-
+    //painter->drawPolygon(projectedBottom);
+    //painter->drawPolygon(projectedTop);
     // Рисуем боковые грани цилиндра
     for (int i = 0; i < sectors; ++i) {
         int next = (i + 1) % sectors;
 
-        QPolygonF sideFace;
+        polys.push_back({ projectedBottom.at(i), projectedBottom.at(next), projectedTop.at(next), projectedTop.at(i) });
+        /*QPolygonF sideFace;
         sideFace << projectedBottom.at(i) << projectedBottom.at(next)
                  << projectedTop.at(next) << projectedTop.at(i);
-        painter->drawPolygon(sideFace);
+        painter->drawPolygon(sideFace);*/
     }
 
     // Прорисовка рёбер цилиндра
@@ -401,17 +377,19 @@ void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, 
         painter->drawLine(p1, p2);
     };
 
-    for (int i = 0; i < sectors; ++i) {
+    /*for (int i = 0; i < sectors; ++i) {
         drawEdge(projectedBottom.at(i), projectedBottom.at((i + 1) % sectors));
         drawEdge(projectedTop.at(i), projectedTop.at((i + 1) % sectors));
         drawEdge(projectedBottom.at(i), projectedTop.at(i));
-    }
+    }*/
+    polys.push_back(projectedTop);
+    polys.push_back(projectedBottom);
 }
 
 
 
 
-void Tetrader::Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedron, Trajectory *trajectory) {
+void Tetrader::Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedron, Trajectory *trajectory, std::vector<Poly> &polys) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     // Устанавливаем цвет заливки
@@ -473,97 +451,94 @@ void Tetrader::Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedro
     // 1. Передняя грань
     QPolygonF frontFace;
     frontFace << projectedApex << projectedBase1 << projectedBase2;
-    painter->drawPolygon(frontFace);
+    // painter->drawPolygon(frontFace);
+    polys.push_back({ apex, baseVertex1, baseVertex2 });
 
     // 2. Левая грань
     QPolygonF leftFace;
     leftFace << projectedApex << projectedBase1 << projectedBase3;
-    painter->drawPolygon(leftFace);
+    // painter->drawPolygon(leftFace);
+    polys.push_back({ apex, baseVertex1, baseVertex3 });
 
     // 3. Правая грань
     QPolygonF rightFace;
     rightFace << projectedApex << projectedBase2 << projectedBase3;
-    painter->drawPolygon(rightFace);
+    // painter->drawPolygon(rightFace);
+    polys.push_back({ apex, baseVertex2, baseVertex3 });
 
     // 4. Нижняя грань
     QPolygonF bottomFace;
     bottomFace << projectedBase1 << projectedBase2 << projectedBase3;
-    painter->drawPolygon(bottomFace);
+    // painter->drawPolygon(bottomFace);
+    polys.push_back({ baseVertex1, baseVertex2, baseVertex3 });
 
     // Прорисовываем рёбра
-    painter->setPen(Qt::black);
+    //painter->setPen(Qt::black);
 
     auto drawEdge = [&](QPointF p1, QPointF p2) {
         painter->drawLine(p1, p2);
     };
 
     // Рёбра тетраэдра
-    drawEdge(projectedApex, projectedBase1);
-    drawEdge(projectedApex, projectedBase2);
-    drawEdge(projectedApex, projectedBase3);
-    drawEdge(projectedBase1, projectedBase2);
-    drawEdge(projectedBase1, projectedBase3);
-    drawEdge(projectedBase2, projectedBase3);
+    //drawEdge(projectedApex, projectedBase1);
+    //drawEdge(projectedApex, projectedBase2);
+    //drawEdge(projectedApex, projectedBase3);
+    //drawEdge(projectedBase1, projectedBase2);
+    //drawEdge(projectedBase1, projectedBase3);
+    //drawEdge(projectedBase2, projectedBase3);
 }
 
 
 
-void Sphere::DrawGlobe(QPainter *painter, Sphere *sphere) {
+void Sphere::DrawGlobe(QPainter *painter, Sphere *sphere, std::vector<Poly> &polys) {
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // Устанавливаем цвет заливки
-    painter->setBrush(QColor::fromRgb(sphere->color));
-    painter->setPen(Qt::black);
+    float x_center = painter->device()->width() / 2;
+    float y_center = painter->device()->height() / 2;
+    float z_center = 0;
 
-    // Центрирование сферы в области рисования
-    int x_center = painter->device()->width() / 2;
-    int y_center = painter->device()->height() / 2;
+    std::vector<QVector3D> vertices;
+    vertices.push_back(QVector3D(x_center, y_center + sphere->RadiusLength, 0.0f));
 
-    // Массив для вершин, представящих полигональные части сферы
-    std::vector<QPoint> vertices;
-
-    // Рисуем сферу как сетку полигонов (сектора по вертикали и горизонтали)
-    for (int i = 0; i < sphere->stacks; ++i) {
-        double theta1 = (i * M_PI) / sphere->stacks; // Угол по вертикали для первого ряда
-        double theta2 = ((i + 1) * M_PI) / sphere->stacks; // Угол для второго ряда
-
+    // Создание вершин для "поясов"
+    for (int i = 0; i < sphere->stacks - 1; ++i) {
+        double phi = M_PI * double(i + 1) / double(sphere->stacks);
         for (int j = 0; j < sphere->slices; ++j) {
-            double phi1 = (j * 2 * M_PI) / sphere->slices; // Угол по горизонтали для первого сегмента
-            double phi2 = ((j + 1) * 2 * M_PI) / sphere->slices; // Угол для второго сегмента
-
-            // Вычисляем координаты вершин для текущих полигонов
-            QPoint p1 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta1, phi1);
-            QPoint p2 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta1, phi2);
-            QPoint p3 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta2, phi2);
-            QPoint p4 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta2, phi1);
-
-            // Рисуем верхнюю половину квадрата
-            QPolygon topPolygon;
-            topPolygon << p1 << p2 << p3 << p4;
-            painter->drawPolygon(topPolygon);
+            double theta = 2.0 * M_PI * double(j) / double(sphere->slices);
+            float x = x_center + sphere->RadiusLength * std::sin(phi) * std::cos(theta);
+            float y = y_center + sphere->RadiusLength * std::cos(phi);
+            float z = z_center + sphere->RadiusLength * std::sin(phi) * std::sin(theta);
+            vertices.emplace_back(x, y, z);
         }
     }
+    vertices.push_back(QVector3D(x_center, y_center - sphere->RadiusLength, 0.0f));
 
-    // Рисуем рёбра (опционально)
-    painter->setPen(Qt::gray);
-    for (int i = 0; i < sphere->stacks; ++i) {
-        double theta1 = (i * M_PI) / sphere->stacks;
-        double theta2 = ((i + 1) * M_PI) / sphere->stacks;
+    for (int i = 0; i < sphere->slices; ++i) {
+        int i0 = i + 1;
+        int i1 = (i + 1) % sphere->slices + 1;
 
-        for (int j = 0; j < sphere->slices; ++j) {
-            double phi1 = (j * 2 * M_PI) / sphere->slices;
-            double phi2 = ((j + 1) * 2 * M_PI) / sphere->slices;
+        Poly poly_top = { vertices[0], vertices[i1], vertices[i0] };
+        polys.push_back(poly_top);
 
-            QPoint p1 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta1, phi1);
-            QPoint p2 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta1, phi2);
-            QPoint p3 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta2, phi2);
-            QPoint p4 = CalculateVertex(x_center, y_center, sphere->RadiusLength, theta2, phi1);
+        i0 = i + sphere->slices * (sphere->stacks - 2) + 1;
+        i1 = (i + 1) % sphere->slices + sphere->slices * (sphere->stacks - 2) + 1;
 
-            // Прорисовываем рёбра
-            drawEdge(painter, p1, p2);
-            drawEdge(painter, p2, p3);
-            drawEdge(painter, p3, p4);
-            drawEdge(painter, p4, p1);
+        Poly poly_bottom = { vertices[vertices.size() - 1], vertices[i0], vertices[i1] };
+        polys.push_back(poly_bottom);
+    }
+
+    // Вершины для остальных частей сферы
+    for (int j = 0; j < sphere->stacks - 2; ++j) {
+        int j0 = j * sphere->slices + 1;
+        int j1 = (j + 1) * sphere->slices + 1;
+        for (int i = 0; i < sphere->slices; ++i) {
+            int i0 = j0 + i;
+            int i1 = j0 + (i + 1) % sphere->slices;
+            int i2 = j1 + (i + 1) % sphere->slices;
+            int i3 = j1 + i;
+
+            Poly poly = { vertices[i0], vertices[i1], vertices[i2], vertices[i3] };
+            polys.push_back(poly);
         }
     }
 }
@@ -583,7 +558,7 @@ void RenderArea::drawTrajectory(QPainter *painter, const Trajectory *trajectory)
     bool lastVisible = false; // Видимость предыдущей точки
     const int steps = 360; // Количество точек для отрисовки эллипса
 
-    for (int i = 0; i <= steps; i++) {
+    for (int i = 1; i <= steps; i++) {
         float angle = i * 2 * M_PI / steps;  // Угол для генерации точек на эллипсе
 
         // Координаты эллипса в локальной системе
@@ -607,7 +582,13 @@ void RenderArea::drawTrajectory(QPainter *painter, const Trajectory *trajectory)
         QPointF projectedPoint(centerX + xRot, centerY - yRot);
 
         // Если точка видима, рисуем линию
-        if (i > 0 && (lastVisible || currentVisible)) {
+        if ((lastVisible || currentVisible)) {
+            painter->setPen(QPen(QColor(Qt::black)));
+            painter->drawLine(lastPoint, projectedPoint);
+        }
+        else
+        {
+            painter->setPen(QPen(QColor(Qt::gray)));
             painter->drawLine(lastPoint, projectedPoint);
         }
 
@@ -617,15 +598,17 @@ void RenderArea::drawTrajectory(QPainter *painter, const Trajectory *trajectory)
 }
 
 void RenderArea::paintEvent(QPaintEvent *) {
+    std::vector<Poly> m_polys;
+
     QPainter painter(this);
     painter.setBrush(bkgndBrush);
     painter.drawRect(QRect(0, 0, width() - 1, height() - 1));
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Отрисовываем базовую сферу
-    //Sphere * base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
+    //Sphere * base_sа яphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
     //MainWindow::trajectory = new Trajectory(DEFAULT_TRAJECTORY_COLOR ,0,0);
-    base_sphere->DrawGlobe(&painter, base_sphere);
+    base_sphere->DrawGlobe(&painter, base_sphere, m_polys);
     // Центр экрана
     float centerX = painter.device()->width() / 2.0f;
     float centerY = painter.device()->height() / 2.0f;
@@ -633,31 +616,69 @@ void RenderArea::paintEvent(QPaintEvent *) {
     // Радиус сферы
     float radius = base_sphere->RadiusLength;
 
-    // Пример создания траектории
-    //Trajectory trajectory("red", 30, 30);  // Пример с углами phi = 45, theta = 30, цвет - красный
-    drawTrajectory(&painter, MainWindow::trajectory);
-
     // Рисуем траекторию
     //drawTrajectory(&painter, MainWindow::trajectory);
 
     // Отрисовываем фигуры
+    // z_buffer->fill(std::numeric_limits<float>::min());
     for (Figure *fig : FigureList()) {
         int ft = fig->GetType();
         if (ft == FIGURE_CUBE) {
             Cube *cube = static_cast<Cube *>(fig);
-            cube->Draw(&painter, cube, base_sphere, MainWindow::trajectory); // Используем функцию отрисовки куба
-        } else if (ft == FIGURE_SPHERE) {
+            cube->Draw(&painter, cube, base_sphere, MainWindow::trajectory, m_polys); // Используем функцию отрисовки куба
+        }
+        else if (ft == FIGURE_SPHERE) {
             Sphere *sphere = static_cast<Sphere *>(fig);
-            sphere->Draw(&painter, base_sphere, sphere, MainWindow::trajectory);
-        } else if (ft == FIGURE_CYLINDER) {
+            sphere->Draw(&painter, base_sphere, sphere, MainWindow::trajectory, m_polys);
+        }
+        else if (ft == FIGURE_CYLINDER) {
             Cylinder *cylinder = static_cast<Cylinder *>(fig);
-            cylinder->Draw(&painter,base_sphere, cylinder, MainWindow::trajectory);
-        } else if (ft == FIGURE_PYRAMID) {
+            cylinder->Draw(&painter, base_sphere, cylinder, MainWindow::trajectory, m_polys);
+        }
+        else if (ft == FIGURE_PYRAMID) {
             Tetrader *tetrader = static_cast<Tetrader *>(fig);
-            tetrader->Draw(&painter, base_sphere, tetrader, MainWindow::trajectory);
+            tetrader->Draw(&painter, base_sphere, tetrader, MainWindow::trajectory, m_polys);
         }
     }
+
+    std::shared_ptr<QGenericMatrix<1000, 1000, float>> z_buffer = std::make_shared<QGenericMatrix<1000, 1000, float>>();
+    z_buffer->fill(std::numeric_limits<float>::lowest());
+    const QVector3D light(300, 100, 150);
+    for (const auto &poly : m_polys)
+    {
+        const auto norm = -poly.normal().normalized();
+        poly.for_each_pixel([&](int x, int y, float z) {
+            if ((*z_buffer)(x, y) > z)
+                return;
+            (*z_buffer)(x, y) = z;
+
+            painter.setPen(QPen(QColor(0, 255, 0)));
+            const QVector3D lightDir = (QVector3D(x, y, z) - light).normalized();
+            float intensity = std::clamp(QVector3D::dotProduct(norm, lightDir), 0.1f, 1.f);
+            // painter.drawLine(light.toPointF(), (light + lightDir * 50).toPointF());
+            /*for (const auto &_poly : m_polys)
+            {
+                if (_poly == poly)
+                    continue;
+                const auto intersection = _poly.intersect(light, lightDir);
+                if (intersection.has_value())
+                {
+                    if (std::abs(light.z() - intersection.value().z()) < std::abs(light.z() - z))
+                    {
+                        intensity = 0.1f;
+                        break;
+                    }
+                }
+            }*/
+
+            QColor color = poly.get_color();
+            painter.setPen(QPen(QColor(color.red() * intensity, color.green() * intensity, color.blue() * intensity)));
+            painter.drawPoint(QPointF(x, y));
+        });
+    }
+    painter.setPen(QPen(QColor(255, 255, 0)));
+    painter.drawEllipse(light.x(), light.y(), 20, 20);
+    // Пример создания траектории
+    //Trajectory trajectory("red", 30, 30);  // Пример с углами phi = 45, theta = 30, цвет - красный
+    drawTrajectory(&painter, MainWindow::trajectory);
 }
-
-
-

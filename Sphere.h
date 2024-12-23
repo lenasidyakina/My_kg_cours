@@ -24,6 +24,11 @@ public:
     int stacks = DEFAULT_STACKS; // Количество секторов по вертикали
 
 
+
+    void Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajectory *trajectory, std::vector<Poly> &polys);
+
+    void DrawGlobe(QPainter *painter, Sphere *sphere, std::vector<Poly> &polys);
+
     void DrawGlobe(QPainter *painter, Sphere *sphere);
 
     QVector3D CalculateVertex3D(const QVector3D &contactPoint, float radius, double theta, double phi);

@@ -10,6 +10,7 @@
 #include "Sphere.h"
 #include "Trajectory.h"
 
+
 struct Point3D {
     float x, y, z;
     Point3D(const QVector3D& vec) : x(vec.x()), y(vec.y()), z(vec.z()) {}
@@ -49,13 +50,16 @@ public:
 
     virtual int GetType() override;
 
-    void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory);
+    //void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory);
     QVector3D center; // Центр тетраэдра
 
     QVector3D getPosition() const {
         return center; // Возвращаем центр тетраэдра
     }
 
+    void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory, std::vector<Poly> &polys);
+
+    void Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory);
 };
 
 Q_DECLARE_METATYPE( Cube )

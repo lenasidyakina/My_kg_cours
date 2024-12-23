@@ -30,6 +30,7 @@ public:
     QVector3D getPosition() const {
         return center; // Возвращаем центр тетраэдра
     }
+    void Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedron, Trajectory *trajectory, std::vector<Poly> &polys);
 };
 
 Q_DECLARE_METATYPE( Tetrader )
