@@ -7,23 +7,26 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>151</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>CubePropertiesDialog</string>
+   <string>Cube properties</string>
   </property>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
      <x>120</x>
-     <y>250</y>
+     <y>100</y>
      <width>152</width>
      <height>32</height>
     </rect>
    </property>
    <property name="standardButtons">
     <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+   </property>
+   <property name="centerButtons">
+    <bool>false</bool>
    </property>
   </widget>
   <widget class="QLabel" name="label">
@@ -66,10 +69,23 @@
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>60</y>
-     <width>251</width>
+     <y>50</y>
+     <width>191</width>
      <height>21</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btnColor">
+   <property name="geometry">
+    <rect>
+     <x>310</x>
+     <y>45</y>
+     <width>51</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Pick</string>
    </property>
   </widget>
  </widget>

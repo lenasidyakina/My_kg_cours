@@ -3,6 +3,7 @@
 #include <deque>
 #include <cmath>
 #include <QMatrix4x4>
+#include <ctime>
 #include "RenderArea.h"
 #include "SettingsDialog.h"
 #include "MainWindow.h"
@@ -12,38 +13,36 @@
 #include "Tetrader.h"
 #include "Trajectory.h"
 
-Sphere *base_sphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
-
-const QList<Figure *> &RenderArea::FigureList()
-{
-    return MainWindow::FigureList();
-}
+Sphere RenderArea::globe;
 
 RenderArea::RenderArea(QWidget *parent)
         : QWidget(parent)
 {
     bkgndBrush.setStyle(Qt::SolidPattern);
-    bkgndBrush.setColor(SettingsDialog::backgroundColor());
     setBackgroundRole(QPalette::Base);
     setAutoFillBackground(true);
 }
 
 void RenderArea::invalidate()
 {
-    bkgndBrush.setColor(SettingsDialog::backgroundColor());
     update();
+}
+
+const QList<Figure*> & RenderArea::FigureList()
+{
+    return MainWindow::FigureList();
 }
 
 // Преобразование сферических координат в декартовые
 Point3D sphericalToCartesian(float radius, float theta, float phi) {
     return Point3D(
-            radius * sin(theta) * cos(phi),
-            radius * sin(theta) * sin(phi),
-            radius * cos(theta)
+        radius * sin(theta) * cos(phi),
+        radius * sin(theta) * sin(phi),
+        radius * cos(theta)
     );
 }
 
-QPointF RenderArea::projectTo2D(const Point3D &point, float centerX, float centerY) {
+QPointF RenderArea::projectTo2D(const Point3D& point, float centerX, float centerY) {
     float fov = 1000.0f; // Поле зрения
     float depth = point.z + fov; // Учитываем смещение по оси Z
     if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
@@ -54,7 +53,7 @@ QPointF RenderArea::projectTo2D(const Point3D &point, float centerX, float cente
 }
 
 
-QPointF projectTo2D(const Point3D &point, float centerX, float centerY) {
+QPointF projectTo2D(const Point3D& point, float centerX, float centerY) {
     float fov = 1000.0f; // Поле зрения
     float depth = point.z + fov; // Учитываем смещение по оси Z
     if (depth <= 0) depth = 0.1f; // Предотвращаем деление на ноль
@@ -66,9 +65,9 @@ QPointF projectTo2D(const Point3D &point, float centerX, float centerY) {
 
 Point3D crossProduct(const Point3D &a, const Point3D &b) {
     return Point3D(
-            a.y * b.z - a.z * b.y,
-            a.z * b.x - a.x * b.z,
-            a.x * b.y - a.y * b.x
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
     );
 }
 
@@ -79,50 +78,21 @@ void normalize(Point3D &v) {
     v.z /= length;
 }
 
-QVector3D getTrajectoryPoint(const Trajectory *trajectory, int step, int steps)
-{
-    float phiRad = trajectory->phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
-    float thetaRad = trajectory->theta * M_PI / 180.0f;  // Угол отклонения (theta)
-    int r = 100;  // Радиус сферы
 
-    float angle = step * 2 * M_PI / steps;  // Угол для генерации точек на эллипсе
-
-    // Координаты эллипса в локальной системе
-    float x = r * cos(angle);
-    float y = r * sin(angle);
-
-    // Поворот плоскости на угол phi вокруг оси X
-    float yRotPhi = y * cos(phiRad);
-    float zRotPhi = y * sin(phiRad);
-
-    // Поворот на угол theta вокруг оси Z
-    float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
-    float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
-    float zRot = yRotPhi;  // Z после поворота вокруг Z
-
-    // Угол между точкой и наблюдателем
-    float dotProduct = zRot; // Проверяем только Z-компонент, т.к. наблюдатель смотрит вдоль оси Z
-    bool currentVisible = dotProduct >= 0; // Если точка "перед" наблюдателем
-
-    //printf("%lf %lf %lf ", xRot, yRot, zRot);
-    return QVector3D(xRot, yRot, zRot);
-}
-
-
-void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *trajectory, std::vector<Poly> &polys) {
+void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere,  std::vector<Poly> &polys) {
     painter->setPen(QPen(Qt::black));
     QColor cubeColor = QColor::fromRgb(cube->color);
     painter->setBrush(QBrush(cubeColor, Qt::SolidPattern));
 
-    float centerX = painter->device()->width() / 2.0f;
-    float centerY = painter->device()->height() / 2.0f;
+    float centerX = painter->device()->width() / 2.0f + sphere->x;
+    float centerY = painter->device()->height() / 2.0f + sphere->y;
 
-    QVector3D closestPoint3D = getTrajectoryPoint(trajectory, trajectory->step, 360);
+    QVector3D closestPoint3D = MainWindow::trajectory->point(sphere->RadiusLength, cube->trainPosition);
     int r = sphere->RadiusLength;
     QVector3D normalizedPoint = closestPoint3D.normalized() * r;
 
     QVector3D normalToPlane = normalizedPoint.normalized();
-    QVector3D tangent = getTrajectoryPoint(trajectory, trajectory->step + 1, 360) - closestPoint3D;
+    QVector3D tangent = MainWindow::trajectory->point(sphere->RadiusLength, cube->trainPosition + 1) - closestPoint3D;
     tangent.normalize();
 
     QVector3D perpendicular = QVector3D::crossProduct(normalToPlane, tangent).normalized();
@@ -182,19 +152,11 @@ void Cube::Draw(QPainter *painter, Cube *cube, Sphere *sphere, Trajectory *traje
         for (int j = 0; j < 4; j++) {
             polygon.push_back(projectedVertices[faces[i][j]]);
         }
-        polygon.set_color(QColor(255, 0, 0));
+        polygon.set_color(color);
         std::reverse(std::begin(polygon), std::end(polygon));
         polys.push_back(polygon);
     }
 }
-
-
-
-
-
-
-
-
 
 
 QPoint CalculateVertex(int x_center, int y_center, int radius, double theta, double phi) {
@@ -208,18 +170,18 @@ void drawEdge(QPainter *painter, QPoint p1, QPoint p2) {
     painter->drawLine(p1, p2);
 }
 
-void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajectory *trajectory, std::vector<Poly> &polys) {
+void Sphere::Draw(QPainter *painter, Sphere *globe, Sphere *sphere, std::vector<Poly> &polys) {
     painter->setPen(QPen(Qt::black));
 
     // Центр устройства (экран отрисовки)
-    float centerX = painter->device()->width() / 2.0f;
-    float centerY = painter->device()->height() / 2.0f;
+    float centerX = painter->device()->width() / 2.0f + globe->x;
+    float centerY = painter->device()->height() / 2.0f + globe->y;
 
     // Радиус базовой сферы
-    float baseRadius = base_sphere->RadiusLength;
+    float baseRadius = globe->RadiusLength;
 
     // Получаем точку на базовой сфере по траектории
-    QVector3D trajectoryPoint = getTrajectoryPoint(trajectory, trajectory->step, 360);
+    QVector3D trajectoryPoint = MainWindow::trajectory->point(baseRadius, trainPosition); // getTrajectoryPoint(trajectory, trajectory->step, 360);
 
     // Нормализуем точку и масштабируем её радиусом базовой сферы
     QVector3D baseSpherePoint = trajectoryPoint.normalized() * baseRadius;
@@ -270,12 +232,13 @@ void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajec
     }
 
     // Отрисовка полигонов (граней между сегментами)
-    painter->setBrush(QBrush(Qt::blue, Qt::SolidPattern)); // Задаём цвет движущейся сферы
     for (int i = 0; i < latitudeSegments; ++i) {
         for (int j = 0; j < longitudeSegments; ++j) {
             int index1 = i * (longitudeSegments + 1) + j;
             int index2 = index1 + longitudeSegments + 1;
-            polys.push_back({ projectedVertices[index1], projectedVertices[index1 + 1], projectedVertices[index2 + 1], projectedVertices[index2] });
+            Poly p = { projectedVertices[index1], projectedVertices[index1 + 1], projectedVertices[index2 + 1], projectedVertices[index2] };
+            p.set_color(color);
+            polys.push_back(p);
             /*QPolygonF polygon;
             polygon.append(projectedVertices[index1]);
             polygon.append(projectedVertices[index1 + 1]);
@@ -288,10 +251,7 @@ void Sphere::Draw(QPainter *painter, Sphere *base_sphere, Sphere *sphere, Trajec
 }
 
 
-
-
-
-void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, Trajectory *trajectory, std::vector<Poly> &polys) {
+void Cylinder::Draw(QPainter *painter, Sphere *globe, Cylinder *cylinder, std::vector<Poly> &polys) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     // Устанавливаем цвет заливки
@@ -299,14 +259,14 @@ void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, 
     painter->setPen(Qt::black);
 
     // Центрирование области рисования
-    float centerX = painter->device()->width() / 2.0f;
-    float centerY = painter->device()->height() / 2.0f;
+    float centerX = painter->device()->width() / 2.0f + globe->x;
+    float centerY = painter->device()->height() / 2.0f + globe->y;
 
     // Радиус базовой сферы
-    float baseRadius = base_sphere->RadiusLength;
+    float baseRadius = globe->RadiusLength;
 
     // Получаем точку на траектории
-    QVector3D trajectoryPoint = getTrajectoryPoint(trajectory, trajectory->step, 360);
+    QVector3D trajectoryPoint = MainWindow::trajectory->point(baseRadius, trainPosition);
 
     // Нормализуем точку и масштабируем до радиуса базовой сферы
     QVector3D baseSpherePoint = trajectoryPoint.normalized() * baseRadius;
@@ -362,8 +322,10 @@ void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, 
     // Рисуем боковые грани цилиндра
     for (int i = 0; i < sectors; ++i) {
         int next = (i + 1) % sectors;
-
-        polys.push_back({ projectedBottom.at(i), projectedBottom.at(next), projectedTop.at(next), projectedTop.at(i) });
+        Poly poly = { projectedBottom.at(i), projectedBottom.at(next), projectedTop.at(next), projectedTop.at(i) };
+        std::reverse(std::begin(poly), std::end(poly));
+        poly.set_color(color);
+        polys.push_back(poly);
         /*QPolygonF sideFace;
         sideFace << projectedBottom.at(i) << projectedBottom.at(next)
                  << projectedTop.at(next) << projectedTop.at(i);
@@ -382,14 +344,18 @@ void Cylinder::Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, 
         drawEdge(projectedTop.at(i), projectedTop.at((i + 1) % sectors));
         drawEdge(projectedBottom.at(i), projectedTop.at(i));
     }*/
+    std::reverse(std::begin(projectedTop), std::end(projectedTop));
+    std::reverse(std::begin(projectedBottom), std::end(projectedBottom));
+
+    projectedTop.set_color(color);
     polys.push_back(projectedTop);
+
+    projectedBottom.set_color(color);
     polys.push_back(projectedBottom);
 }
 
-
-
-
-void Tetrader::Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedron, Trajectory *trajectory, std::vector<Poly> &polys) {
+#if 0
+void Tetrader::Draw(QPainter *painter, Sphere *globe, Tetrader *tetrahedron, std::vector<Poly> &polys) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     // Устанавливаем цвет заливки
@@ -397,14 +363,14 @@ void Tetrader::Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedro
     painter->setPen(Qt::black);
 
     // Центрирование области рисования
-    float centerX = painter->device()->width() / 2.0f;
-    float centerY = painter->device()->height() / 2.0f;
+    float centerX = painter->device()->width() / 2.0f + globe->x;
+    float centerY = painter->device()->height() / 2.0f + globe->y;
 
     // Радиус базовой сферы
-    float baseRadius = base_sphere->RadiusLength;
+    float baseRadius = globe->RadiusLength;
 
     // Получаем точку на траектории
-    QVector3D trajectoryPoint = getTrajectoryPoint(trajectory, trajectory->step, 360);
+    QVector3D trajectoryPoint = MainWindow::trajectory->point(baseRadius, trainPosition); //getTrajectoryPoint(trajectory, trajectory->step, 360);
 
     // Нормализуем точку и масштабируем до радиуса базовой сферы
     QVector3D baseSpherePoint = trajectoryPoint.normalized() * baseRadius;
@@ -488,13 +454,235 @@ void Tetrader::Draw(QPainter *painter, Sphere *base_sphere, Tetrader *tetrahedro
     //drawEdge(projectedBase2, projectedBase3);
 }
 
+#endif
+
+static QVector3D _kostil(QVector3D&& vector)
+{
+    vector.setY(-vector.y());
+    return vector;
+}
+
+void Tetrader::Draw(QPainter *painter, Sphere *globe, Tetrader *tetrahedron,  std::vector<Poly> &polys) {
+    painter->setRenderHint(QPainter::Antialiasing);
+    // Устанавливаем цвет заливки
+    painter->setBrush(QColor::fromRgb(tetrahedron->color));
+    painter->setPen(Qt::black);
+
+    // Центрирование области рисования
+    float centerX = painter->device()->width() / 2.0f + globe->x;
+    float centerY = painter->device()->height() / 2.0f + globe->y;
+    QVector3D center = {centerX, centerY, 0};
+
+
+    // Радиус базовой сферы
+    float baseRadius = globe->RadiusLength;
+
+    // Получаем точку на траектории
+    QVector3D trajectoryPoint = MainWindow::trajectory->point(baseRadius, trainPosition);
+
+    // Нормализуем точку и масштабируем до радиуса базовой сферы
+    QVector3D baseSpherePoint = trajectoryPoint.normalized() * baseRadius;
+
+    // Высота тетраэдра
+    float height = tetrahedron->Height;
+
+    // Длина ребра правильного тетраэдра
+    float edgeLength = (2.0 / sqrt(3)) * height;
+
+    // Определяем центр нижней грани тетраэдра
+    QVector3D baseCenter = baseSpherePoint;
+
+    // Вычисляем смещение от центра нижней грани к вершине
+    QVector3D apexOffset = trajectoryPoint.normalized() * height;
+
+    // Верхняя вершина тетраэдра
+    QVector3D apex = center + _kostil(baseSpherePoint + apexOffset);
+
+    // Нормаль к траектории (вектор перпендикулярный траектории)
+    QVector3D normal = QVector3D::crossProduct(trajectoryPoint, QVector3D(0, 0, 1)).normalized();
+
+
+    // Используем нормаль для правильной ориентации рёбер
+    QVector3D tangent1 = normal;
+    QVector3D tangent2 = QVector3D::crossProduct(tangent1, trajectoryPoint).normalized();
+
+    // Вершины нижней грани
+    QVector3D baseVertex1 = center + _kostil(baseCenter + tangent1 * (edgeLength / 2));
+    QVector3D baseVertex2 = center + _kostil(baseCenter - tangent1 * (edgeLength / 2) + tangent2 * (edgeLength / 2));
+    QVector3D baseVertex3 = center + _kostil(baseCenter - tangent1 * (edgeLength / 2) - tangent2 * (edgeLength / 2));
+
+    qDebug() << apex << baseVertex1 << baseVertex2 << baseVertex3;
+    // Рисуем грани тетраэдра
+
+    // 1. Передняя грань
+    QPolygonF frontFace;
+    //frontFace << projectedApex << projectedBase1 << projectedBase2;
+    // painter->drawPolygon(frontFace);
+    Poly p = { apex, baseVertex1, baseVertex2 };
+    p.set_color(color);
+    polys.push_back(p);
+
+    // 2. Левая грань
+    QPolygonF leftFace;
+    //leftFace << projectedApex << projectedBase1 << projectedBase3;
+    // painter->drawPolygon(leftFace);
+    p = { apex, baseVertex1, baseVertex3 };
+    p.set_color(color);
+    polys.push_back(p);
+
+    // 3. Правая грань
+    QPolygonF rightFace;
+    //rightFace << projectedApex << projectedBase2 << projectedBase3;
+    // painter->drawPolygon(rightFace);
+    p = { apex, baseVertex2, baseVertex3 };
+    p.set_color(color);
+    polys.push_back(p);
+
+    // 4. Нижняя грань
+    QPolygonF bottomFace;
+    //bottomFace << projectedBase1 << projectedBase2 << projectedBase3;
+    // painter->drawPolygon(bottomFace);
+    p = { baseVertex1, baseVertex2, baseVertex3 };
+    p.set_color(color);
+    polys.push_back(p);
+}
+
+QPointF projectTo2D_t(float x, float y, float z, float centerX, float centerY) {
+    // Проекция на 2D
+    // Здесь предполагается, что z влияет на масштабирование (можно добавить перспективу)
+    return QPointF(centerX + x, centerY - y);  // Преобразование для 2D
+}
+
+void RenderArea::drawTrajectory(QPainter *painter, const Trajectory *trajectory) {
+    QColor color = QColor::fromRgb(trajectory->color);
+    painter->setPen(QPen(color));
+
+    float phiRad = trajectory->phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
+    float thetaRad = trajectory->theta * M_PI / 180.0f;  // Угол отклонения (theta)
+    int r = globe.RadiusLength;
+
+    float centerX = painter->device()->width() / 2.0f + globe.x;  // Центр экрана по X
+    float centerY = painter->device()->height() / 2.0f + globe.y;  // Центр экрана по Y
+
+    QPointF lastPoint;
+    bool lastVisible = false; // Видимость предыдущей точки
+    const int steps = 360; // Количество точек для отрисовки эллипса
+
+    for (int i = 0; i <= steps; i++) {
+        float angle = i * 2 * M_PI / steps;  // Угол для генерации точек на эллипсе
+
+        // Координаты эллипса в локальной системе
+        float x = r * cos(angle);
+        float y = r * sin(angle);
+
+        // Поворот плоскости на угол phi вокруг оси X
+        float yRotPhi = y * cos(phiRad);
+        float zRotPhi = y * sin(phiRad);
+
+        // Поворот на угол theta вокруг оси Z
+        float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
+        float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
+        float zRot = yRotPhi;  // Z после поворота вокруг Z
+
+        // Угол между точкой и наблюдателем
+        float dotProduct = zRot; // Проверяем только Z-компонент, т.к. наблюдатель смотрит вдоль оси Z
+        bool currentVisible = dotProduct >= 0; // Если точка "перед" наблюдателем
+
+        // Преобразование в экранные координаты
+        QPointF projectedPoint(centerX + xRot, centerY - yRot);
+        if(i == 0)
+            painter->drawPoint(projectedPoint);
+
+        // Если точка видима, рисуем линию
+        if ((i > 0 && (lastVisible || currentVisible)) || (i > 0 && (abs(trajectory->theta) < EPS)) && ((abs(trajectory->phi) - 90) < EPS)) {
+            painter->drawLine(lastPoint, projectedPoint);
+        }
+
+        lastPoint = projectedPoint;
+        lastVisible = currentVisible;
+    }
+}
+
+QVector3D RenderArea::getTrajectoryPoint(const Trajectory *trajectory) {
+
+    float phiRad = trajectory->phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
+    float thetaRad = trajectory->theta * M_PI / 180.0f;  // Угол отклонения (theta)
+
+    int step = trajectory->step;
+
+    float angle = step * 2 * M_PI / TRAJECTORY_MAX_STEPS;
+
+    // Координаты эллипса в локальной системе
+    float x = GLOBE_RADIUS * cos(angle);
+    float y = GLOBE_RADIUS * sin(angle);
+
+    // Поворот плоскости на угол phi вокруг оси X
+    float yRotPhi = y * cos(phiRad);
+    float zRotPhi = y * sin(phiRad);
+
+    // Поворот на угол theta вокруг оси Z
+    float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
+    float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
+    float zRot = yRotPhi;  // Z после поворота вокруг Z
+
+    return QVector3D( xRot, yRot, zRot );
+}
+
+
+
+void swap(int* xp, int* yp){
+    int temp = *xp;
+    *xp = *yp;
+    *yp = temp;
+}
+
+int geta(int step) {
+    int a;
+    if (step > 270) {
+        a = step - 270;
+    }
+    else if (step > 180) {
+        a = 270 - step;
+    }
+    else if (step < 90) {
+        a = step + 90;
+    }
+    else
+        a = 270 - step;
+    return a;
+}
+
+void sortFigures(Figure * arr[], int n){
+    int i, j;
+    bool swapped;
+    for (i = 0; i < n - 1; i++) {
+        swapped = false;
+        for (j = 0; j < n - i - 1; j++) {
+            int a = geta(arr[j]->trainPosition);
+            int b = geta(arr[j+1]->trainPosition);
+
+
+            if (a > b) {
+                Figure * tmp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = tmp;
+                swapped = true;
+            }
+        }
+
+        // If no two elements were swapped by inner loop,
+        // then break
+        if (swapped == false)
+            break;
+    }
+}
 
 
 void Sphere::DrawGlobe(QPainter *painter, Sphere *sphere, std::vector<Poly> &polys) {
     painter->setRenderHint(QPainter::Antialiasing);
 
-    float x_center = painter->device()->width() / 2;
-    float y_center = painter->device()->height() / 2;
+    float x_center = painter->device()->width() / 2 + sphere->x;
+    float y_center = painter->device()->height() / 2 + sphere->y;
     float z_center = 0;
 
     std::vector<QVector3D> vertices;
@@ -538,66 +726,46 @@ void Sphere::DrawGlobe(QPainter *painter, Sphere *sphere, std::vector<Poly> &pol
             int i3 = j1 + i;
 
             Poly poly = { vertices[i0], vertices[i1], vertices[i2], vertices[i3] };
+            poly.set_color(color);
             polys.push_back(poly);
         }
     }
 }
 
-void RenderArea::drawTrajectory(QPainter *painter, const Trajectory *trajectory) {
-    QColor color = QColor::fromRgb(trajectory->color);
-    painter->setPen(QPen(color));
 
-    float phiRad = trajectory->phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
-    float thetaRad = trajectory->theta * M_PI / 180.0f;  // Угол отклонения (theta)
-    int r = 100;  // Радиус сферы
-
-    float centerX = painter->device()->width() / 2.0f;  // Центр экрана по X
-    float centerY = painter->device()->height() / 2.0f;  // Центр экрана по Y
-
-    QPointF lastPoint;
-    bool lastVisible = false; // Видимость предыдущей точки
-    const int steps = 360; // Количество точек для отрисовки эллипса
-
-    for (int i = 1; i <= steps; i++) {
-        float angle = i * 2 * M_PI / steps;  // Угол для генерации точек на эллипсе
-
-        // Координаты эллипса в локальной системе
-        float x = r * cos(angle);
-        float y = r * sin(angle);
-
-        // Поворот плоскости на угол phi вокруг оси X
-        float yRotPhi = y * cos(phiRad);
-        float zRotPhi = y * sin(phiRad);
-
-        // Поворот на угол theta вокруг оси Z
-        float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
-        float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
-        float zRot = yRotPhi;  // Z после поворота вокруг Z
-
-        // Угол между точкой и наблюдателем
-        float dotProduct = zRot; // Проверяем только Z-компонент, т.к. наблюдатель смотрит вдоль оси Z
-        bool currentVisible = dotProduct >= 0; // Если точка "перед" наблюдателем
-
-        // Преобразование в экранные координаты
-        QPointF projectedPoint(centerX + xRot, centerY - yRot);
-
-        // Если точка видима, рисуем линию
-        if ((lastVisible || currentVisible)) {
-            painter->setPen(QPen(QColor(Qt::black)));
-            painter->drawLine(lastPoint, projectedPoint);
+void RenderArea::computeTrain()
+{
+    int pos = MainWindow::trajectory->step;
+    int dlen = 0;
+    int tlen = 0;
+    int radius = globe.RadiusLength;
+    for (Figure *fig : FigureList()) {
+        if (fig->GetType() == FIGURE_CUBE) {
+            dlen = (180.0*(static_cast<Cube *>(fig)->EdgeLength + 5)/2)/(M_PI*radius);
         }
-        else
-        {
-            painter->setPen(QPen(QColor(Qt::gray)));
-            painter->drawLine(lastPoint, projectedPoint);
+        else if (fig->GetType() == FIGURE_SPHERE) {
+            dlen = (180.0*static_cast<Sphere *>(fig)->RadiusLength)/(M_PI*radius);
         }
-
-        lastPoint = projectedPoint;
-        lastVisible = currentVisible;
+        else if (fig->GetType() == FIGURE_PYRAMID) {
+            dlen = (180.0*static_cast<Tetrader *>(fig)->Height/1.5)/(M_PI*radius);
+        }
+        else if (fig->GetType() == FIGURE_CYLINDER) {
+            dlen = (180.0*static_cast<Cylinder *>(fig)->BaseRadius)/(M_PI*radius);
+        }
+        pos =  (TRAJECTORY_MAX_STEPS + pos - dlen - tlen) % TRAJECTORY_MAX_STEPS;
+        fig->trainPosition = pos;
+        tlen = dlen;
     }
 }
 
+QPointF RenderArea::getCenter(QPainter * painter)
+{
+    return QPointF(painter->device()->width() / 2.0f + globe.x,
+                   painter->device()->height() / 2.0f + globe.y);
+}
+
 void RenderArea::paintEvent(QPaintEvent *) {
+    clock_t start_time = clock();  // Сохраняем время начала
     std::vector<Poly> m_polys;
 
     QPainter painter(this);
@@ -608,16 +776,11 @@ void RenderArea::paintEvent(QPaintEvent *) {
     // Отрисовываем базовую сферу
     //Sphere * base_sа яphere = new Sphere(DEFAULT_FIGURE_COLOR, DEFAULT_BASE_SPHERE_RADIUS);
     //MainWindow::trajectory = new Trajectory(DEFAULT_TRAJECTORY_COLOR ,0,0);
-    base_sphere->DrawGlobe(&painter, base_sphere, m_polys);
-    // Центр экрана
-    float centerX = painter.device()->width() / 2.0f;
-    float centerY = painter.device()->height() / 2.0f;
+    globe.DrawGlobe(&painter, &globe, m_polys);
 
-    // Радиус сферы
-    float radius = base_sphere->RadiusLength;
-
-    // Рисуем траекторию
-    //drawTrajectory(&painter, MainWindow::trajectory);
+    computeTrain();
+    float centerX = painter.device()->width() / 2.0f + globe.x;
+    float centerY = painter.device()->height() / 2.0f + globe.y;
 
     // Отрисовываем фигуры
     // z_buffer->fill(std::numeric_limits<float>::min());
@@ -625,29 +788,31 @@ void RenderArea::paintEvent(QPaintEvent *) {
         int ft = fig->GetType();
         if (ft == FIGURE_CUBE) {
             Cube *cube = static_cast<Cube *>(fig);
-            cube->Draw(&painter, cube, base_sphere, MainWindow::trajectory, m_polys); // Используем функцию отрисовки куба
+            cube->Draw(&painter, cube, &globe,  m_polys); // Используем функцию отрисовки куба
         }
         else if (ft == FIGURE_SPHERE) {
             Sphere *sphere = static_cast<Sphere *>(fig);
-            sphere->Draw(&painter, base_sphere, sphere, MainWindow::trajectory, m_polys);
+            sphere->Draw(&painter, &globe, sphere,  m_polys);
         }
         else if (ft == FIGURE_CYLINDER) {
             Cylinder *cylinder = static_cast<Cylinder *>(fig);
-            cylinder->Draw(&painter, base_sphere, cylinder, MainWindow::trajectory, m_polys);
+            cylinder->Draw(&painter, &globe, cylinder, m_polys);
         }
         else if (ft == FIGURE_PYRAMID) {
             Tetrader *tetrader = static_cast<Tetrader *>(fig);
-            tetrader->Draw(&painter, base_sphere, tetrader, MainWindow::trajectory, m_polys);
+            tetrader->Draw(&painter, &globe, tetrader,  m_polys);
         }
     }
 
-    std::shared_ptr<QGenericMatrix<1000, 1000, float>> z_buffer = std::make_shared<QGenericMatrix<1000, 1000, float>>();
+    std::shared_ptr<QGenericMatrix<2000, 2000, float>> z_buffer = std::make_shared<QGenericMatrix<2000, 2000, float>>();
     z_buffer->fill(std::numeric_limits<float>::lowest());
-    const QVector3D light(300, 100, 150);
+    const QVector3D light(centerX + 100, centerY - 150, 150);
     for (const auto &poly : m_polys)
     {
         const auto norm = -poly.normal().normalized();
         poly.for_each_pixel([&](int x, int y, float z) {
+            if ((x < 0) || (y < 0))
+                return;
             if ((*z_buffer)(x, y) > z)
                 return;
             (*z_buffer)(x, y) = z;
@@ -655,7 +820,6 @@ void RenderArea::paintEvent(QPaintEvent *) {
             painter.setPen(QPen(QColor(0, 255, 0)));
             const QVector3D lightDir = (QVector3D(x, y, z) - light).normalized();
             float intensity = std::clamp(QVector3D::dotProduct(norm, lightDir), 0.1f, 1.f);
-            // painter.drawLine(light.toPointF(), (light + lightDir * 50).toPointF());
             /*for (const auto &_poly : m_polys)
             {
                 if (_poly == poly)
@@ -677,8 +841,14 @@ void RenderArea::paintEvent(QPaintEvent *) {
         });
     }
     painter.setPen(QPen(QColor(255, 255, 0)));
+    painter.setBrush(QBrush(Qt::yellow, Qt::SolidPattern)); // Задаём цвет движущейся сферы
     painter.drawEllipse(light.x(), light.y(), 20, 20);
     // Пример создания траектории
     //Trajectory trajectory("red", 30, 30);  // Пример с углами phi = 45, theta = 30, цвет - красный
-    drawTrajectory(&painter, MainWindow::trajectory);
+    if (MainWindow::trajectory->flag)
+        drawTrajectory(&painter, MainWindow::trajectory);
+    clock_t end_time = clock();  // Сохраняем время окончания
+    double elapsed_time = double(end_time - start_time) / CLOCKS_PER_SEC;  // Вычисляем прошедшее время в секундах
+
+    //qDebug() << "Time taken for paintEvent:" << elapsed_time << "seconds";  // Выводим время в секундах
 }

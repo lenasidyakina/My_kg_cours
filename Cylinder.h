@@ -1,3 +1,6 @@
+//
+// Created by sidya on 19.11.2024.
+//
 
 #ifndef CYLINDER_H
 #define CYLINDER_H
@@ -6,7 +9,6 @@
 
 #include "Figure.h"
 #include "Sphere.h"
-
 
 class Cylinder : public Figure {
 public:
@@ -21,15 +23,8 @@ public:
     virtual QString getName() override;
     virtual int GetType() override;
 
-    void Draw(QPainter *painter, Cylinder *cylinder);
+    void Draw(QPainter *painter, Sphere *globe, Cylinder *cylinder, std::vector<Poly> &polys);
 
-    void Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, Trajectory *trajectory);
-    QVector3D center; // Центр тетраэдра
-
-    QVector3D getPosition() const {
-        return center; // Возвращаем центр тетраэдра
-    }
-    void Draw(QPainter *painter, Sphere *base_sphere, Cylinder *cylinder, Trajectory *trajectory, std::vector<Poly> &polys);
 };
 
 Q_DECLARE_METATYPE( Cylinder )

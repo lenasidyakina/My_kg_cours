@@ -7,30 +7,30 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>177</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TrajectoryPropertiesDialog</string>
+   <string>Trajectory properties</string>
   </property>
   <widget class="QLabel" name="label_2">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>80</y>
+     <y>50</y>
      <width>81</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>Theta:</string>
+    <string>Angle Theta:</string>
    </property>
   </widget>
   <widget class="QLineEdit" name="edtPhi">
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>40</y>
+     <y>20</y>
      <width>251</width>
      <height>21</height>
     </rect>
@@ -40,59 +40,55 @@
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>80</y>
+     <y>50</y>
      <width>251</width>
      <height>21</height>
     </rect>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_3">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>120</y>
-     <width>81</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Color:</string>
    </property>
   </widget>
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>36</y>
+     <y>20</y>
      <width>81</width>
      <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>Phi:</string>
-   </property>
-  </widget>
-  <widget class="QLineEdit" name="edtColor">
-   <property name="geometry">
-    <rect>
-     <x>110</x>
-     <y>120</y>
-     <width>251</width>
-     <height>21</height>
-    </rect>
+    <string>Angle Phi:</string>
    </property>
   </widget>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>120</x>
-     <y>250</y>
+     <x>110</x>
+     <y>130</y>
      <width>156</width>
      <height>24</height>
     </rect>
    </property>
    <property name="standardButtons">
     <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="checkBox_draw">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>90</y>
+     <width>111</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="tabletTracking">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Draw trajectory</string>
    </property>
   </widget>
  </widget>

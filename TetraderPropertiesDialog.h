@@ -1,3 +1,6 @@
+//
+// Created by sidya on 19.11.2024.
+//
 
 #ifndef TETRADERPROPERTIESDIALOG_H
 #define TETRADERPROPERTIESDIALOG_H
@@ -22,6 +25,7 @@ private:
     Ui::TetraderPropertiesDialog *ui;
     private slots:
         void OnOk();
+        void PickLineColor();
 };
 
 

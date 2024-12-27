@@ -1,4 +1,6 @@
-
+//
+// Created by Ivan Sidyakin on 08.11.2024.
+//
 
 #ifndef CURS_SETTINGSDIALOG_H
 #define CURS_SETTINGSDIALOG_H
@@ -7,7 +9,7 @@
 #include <QApplication>
 
 
-#define SETTINGS_FILE (QApplication::applicationDirPath() + "./application.ini")
+#define SETTINGS_FILE (QApplication::applicationDirPath() + "/application.ini")
 
 
 QT_BEGIN_NAMESPACE
@@ -21,7 +23,6 @@ public:
     explicit SettingsDialog(QWidget *parent = nullptr);
 
     ~SettingsDialog() override;
-    static QString backgroundColor();
 
 private:
     Ui::SettingsDialog *ui;

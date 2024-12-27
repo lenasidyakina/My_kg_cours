@@ -15,7 +15,6 @@
 
 #define TRAJECTORY_STEP 1
 #define TRAJECTORY_MAX_STEPS 360
-#define GLOBE_RADIUS 100 // todo:
 
 class Trajectory {
 public:
@@ -28,6 +27,8 @@ public:
     int phi = 0;
     int theta = 0;
     int step = 0;
+    int flag = 1;
+
     static uint ColorToInt(const QString color)
     {
         bool ok;
@@ -37,52 +38,8 @@ public:
         return c;
     }
 
-    QVector3D point3(float dx, float dy, float dz) {
-        float phiRad = phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
-        float thetaRad = theta * M_PI / 180.0f;  // Угол отклонения (theta)
 
-        float angle = step * 2 * M_PI / TRAJECTORY_MAX_STEPS;
-
-        // Координаты эллипса в локальной системе
-        float x = (GLOBE_RADIUS + dx) * cos(angle);
-        float y = (GLOBE_RADIUS + dy) * sin(angle);
-
-        // Поворот плоскости на угол phi вокруг оси X
-        float yRotPhi = y * cos(phiRad);
-        float zRotPhi = y * sin(phiRad);
-
-        // Поворот на угол theta вокруг оси Z
-        float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
-        float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
-        float zRot = yRotPhi;  // Z после поворота вокруг Z
-
-        return QVector3D( xRot, yRot, zRot );
-    }
-
-    QVector3D point3(int dr, int ds) {
-
-        float phiRad = phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
-        float thetaRad = theta * M_PI / 180.0f;  // Угол отклонения (theta)
-
-        float angle = (step + ds) * 2 * M_PI / TRAJECTORY_MAX_STEPS;
-
-        // Координаты эллипса в локальной системе
-        float x = (GLOBE_RADIUS + dr) * cos(angle);
-        float y = (GLOBE_RADIUS + dr) * sin(angle);
-
-        // Поворот плоскости на угол phi вокруг оси X
-        float yRotPhi = y * cos(phiRad);
-        float zRotPhi = y * sin(phiRad);
-
-        // Поворот на угол theta вокруг оси Z
-        float xRot = x * cos(thetaRad) - zRotPhi * sin(thetaRad);
-        float yRot = x * sin(thetaRad) + zRotPhi * cos(thetaRad);
-        float zRot = yRotPhi;  // Z после поворота вокруг Z
-
-        return QVector3D( xRot, yRot, zRot );
-    }
-
-    QVector3D point(int dr, int pos) {
+    QVector3D point(int radius, int pos) {
 
         float phiRad = phi * M_PI / 180.0f;  // Угол наклона плоскости (phi)
         float thetaRad = theta * M_PI / 180.0f;  // Угол отклонения (theta)
@@ -90,8 +47,8 @@ public:
         float angle = (pos) * 2 * M_PI / TRAJECTORY_MAX_STEPS;
 
         // Координаты эллипса в локальной системе
-        float x = (GLOBE_RADIUS + dr) * cos(angle);
-        float y = (GLOBE_RADIUS + dr) * sin(angle);
+        float x = radius * cos(angle);
+        float y = radius * sin(angle);
 
         // Поворот плоскости на угол phi вокруг оси X
         float yRotPhi = y * cos(phiRad);
@@ -103,21 +60,6 @@ public:
         float zRot = yRotPhi;  // Z после поворота вокруг Z
 
         return QVector3D( xRot, yRot, zRot );
-    }
-
-    QVector2D point2() {
-
-        float angle = step * 2 * M_PI / TRAJECTORY_MAX_STEPS;
-
-        // Координаты эллипса в локальной системе
-        float x = (GLOBE_RADIUS + 0) * cos(angle);
-        float y = (GLOBE_RADIUS + 0) * sin(angle);
-
-        return QVector2D( x, y );
-    }
-
-    float alpha() {
-        return step * 2 * M_PI / TRAJECTORY_MAX_STEPS;
     }
 
 };

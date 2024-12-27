@@ -23,6 +23,8 @@ void OnOk();
 
 private:
     Ui::CylinderPropertiesDialog *ui;
+private slots:
+    void PickLineColor();
 };
 
 

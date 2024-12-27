@@ -22,6 +22,7 @@ private:
     Ui::SpherePropertiesDialog *ui;
     private slots:
         void OnOk();
+        void PickLineColor();
 };
 
 #endif //SPHEREPROPERTIESDIALOG_H

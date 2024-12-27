@@ -75,30 +75,30 @@ MainWindow::MainWindow() {
     gbl->addWidget(btnChangeTrajectiry);
     connect(btnChangeTrajectiry, &QPushButton::released, this, &MainWindow::handleChangeTrajectiry);
 
-
     gb->setLayout(gbl);
     layout->addWidget(gb);
     widget->setLayout(layout);
-
 
     setWindowTitle(tr("Cursovoj project"));
     setMinimumSize(480, 240);
     resize(640, 480);
 
     animationTimer = new QTimer(this);
-    connect(animationTimer, &QTimer::timeout, this, &MainWindow::move);
+    connect(animationTimer, &QTimer::timeout, this, &MainWindow::animate);
 
+
+    mainPanel->updateSettings();
 }
 
-void MainWindow::move() {
-    trajectory->step = (trajectory->step + 1) % 360;
+void MainWindow::animate() {
+    trajectory->step = (trajectory->step + mainPanel->getTrainSpeed()) % TRAJECTORY_MAX_STEPS;
     mainPanel->repaint();
 }
 
 void MainWindow::handleSettings() {
     auto dlg = new SettingsDialog(this);
     if (dlg->exec() == QDialog::Accepted) {
-        updateScene();
+        mainPanel->updateSettings();
     }
     delete dlg;
 }
@@ -114,8 +114,33 @@ void MainWindow::handleChangeTrajectiry() {
 }
 //https://doc.qt.io/qt-6/qtwidgets-painting-basicdrawing-example.html
 
+bool MainWindow::checkTrainLength(QList<Figure *> figureList) {
+    int dlen = 0;
+    int tlen = 0;
+    int count = 0;
+    int radius = mainPanel->globe.RadiusLength;
+    for (Figure *fig : figureList) {
+        if (fig->GetType() == FIGURE_CUBE) {
+            dlen = (180.0*(static_cast<Cube *>(fig)->EdgeLength + 5)/2)/(M_PI*radius);
+        }
+        else if (fig->GetType() == FIGURE_SPHERE) {
+            dlen = (180.0*static_cast<Sphere *>(fig)->RadiusLength)/(M_PI*radius);
+        }
+        else if (fig->GetType() == FIGURE_PYRAMID) {
+            dlen = (180.0*static_cast<Tetrader *>(fig)->Height/1.5)/(M_PI*radius);
+        }
+        else if (fig->GetType() == FIGURE_CYLINDER) {
+            dlen = (180.0*static_cast<Cylinder *>(fig)->BaseRadius)/(M_PI*radius);
+        }
+        count += dlen + tlen;
+        tlen = dlen;
+    }
+    return count < TRAJECTORY_MAX_STEPS - 10;
+}
+
 void MainWindow::handleNewFigure() {
     FigureSelectorDialog * dlg = new FigureSelectorDialog(this);
+    bool ok = false;
     if (dlg->exec() == QDialog::Accepted) {
         int sel = dlg->getSelection();
         if (sel == FIGURE_CUBE) {
@@ -123,7 +148,8 @@ void MainWindow::handleNewFigure() {
             CubePropertiesDialog * cpd = new CubePropertiesDialog(cube);
             if (cpd->exec() == QDialog::Accepted) {
                 figureList.append(cube); // delete ?
-                figureListWigdet->addItem(cube->getName());
+                ok = true;
+                //figureListWigdet->addItem(cube->getName());
             }
             delete cpd;
         }
@@ -132,7 +158,8 @@ void MainWindow::handleNewFigure() {
             SpherePropertiesDialog * cpd = new SpherePropertiesDialog(sphere);
             if (cpd->exec() == QDialog::Accepted) {
                 figureList.append(sphere);
-                figureListWigdet->addItem(sphere->getName());
+                ok = true;
+                //figureListWigdet->addItem(sphere->getName());
             }
             delete cpd;
         }
@@ -141,7 +168,8 @@ void MainWindow::handleNewFigure() {
             TetraderPropertiesDialog * cpd = new TetraderPropertiesDialog(tetrader);
             if (cpd->exec() == QDialog::Accepted) {
                 figureList.append(tetrader);
-                figureListWigdet->addItem(tetrader->getName());
+                ok = true;
+                //figureListWigdet->addItem(tetrader->getName());
             }
             delete cpd;
         }
@@ -150,9 +178,21 @@ void MainWindow::handleNewFigure() {
             CylinderPropertiesDialog * cpd = new CylinderPropertiesDialog(cylinder);
             if (cpd->exec() == QDialog::Accepted) {
                 figureList.append(cylinder);
-                figureListWigdet->addItem(cylinder->getName());
+                ok = true;
+                //figureListWigdet->addItem(cylinder->getName());
             }
             delete cpd;
+        }
+        if (ok) {
+            if (!checkTrainLength(figureList)) {
+                QMessageBox::warning(this, "max figures", "max figures");
+                Figure * f = figureList.last();
+                figureList.remove(figureList.indexOf(f));
+                delete f;
+            }
+            else {
+                figureListWigdet->addItem(figureList.last()->getName());
+            }
         }
     }
     delete dlg;
@@ -162,11 +202,13 @@ void MainWindow::handleEditFigure() {
     int row = figureListWigdet->currentRow();
     if (row < 0)
         return;
+    bool ok = false;
     int sel = figureList[row]->GetType();
     if (sel == FIGURE_CUBE) {
         CubePropertiesDialog * cpd = new CubePropertiesDialog((Cube *)figureList[row]);
         if (cpd->exec() == QDialog::Accepted) {
             figureListWigdet->item(row)->setText(((Cube *)figureList[row])->getName());
+            ok = true;
         }
         delete cpd;
     }
@@ -174,6 +216,7 @@ void MainWindow::handleEditFigure() {
         SpherePropertiesDialog * cpd = new SpherePropertiesDialog((Sphere *)figureList[row]);
         if (cpd->exec() == QDialog::Accepted) {
             figureListWigdet->item(row)->setText(((Sphere *)figureList[row])->getName());
+            ok = true;
         }
         delete cpd;
     }
@@ -181,6 +224,7 @@ void MainWindow::handleEditFigure() {
         TetraderPropertiesDialog * cpd = new TetraderPropertiesDialog((Tetrader *)figureList[row]);
         if (cpd->exec() == QDialog::Accepted) {
             figureListWigdet->item(row)->setText(((Tetrader *)figureList[row])->getName());
+            ok = true;
         }
         delete cpd;
     }
@@ -188,8 +232,19 @@ void MainWindow::handleEditFigure() {
         CylinderPropertiesDialog * cpd = new CylinderPropertiesDialog((Cylinder *)figureList[row]);
         if (cpd->exec() == QDialog::Accepted) {
             figureListWigdet->item(row)->setText(((Cylinder *)figureList[row])->getName());
+            ok = true;
         }
         delete cpd;
+    }
+    if (ok) {
+        while (!checkTrainLength(figureList)) {
+            QMessageBox::warning(this, "max figures", "max figures");
+            Figure * f = figureList.last();
+            figureList.remove(figureList.indexOf(f));
+            delete f;
+            delete figureListWigdet->takeItem(figureListWigdet->count()-1);
+        }
+        mainPanel->repaint();
     }
 }
 
@@ -213,7 +268,7 @@ void MainWindow::startAnimation() {
     if (animationTimer->isActive()) {
         animationTimer->stop(); // Останавливаем таймер, если он уже работает
     } else {
-        animationTimer->start(100); // Запускаем таймер с интервалом ~16 мс (60 FPS)
+        animationTimer->start(16); // Запускаем таймер с интервалом ~16 мс (60 FPS)
     }
 }
 
@@ -256,15 +311,14 @@ float magnitude(const Point3D& v) {
 
 
 void MainWindow::updateScene() {
-    // Нет необходимости создавать base_sphere в updateScene
-    // Вместо этого используйте уже существующую сферу (если она есть)
-#if 0
+
+
     // Пример обновления углов траектории для движения куба
     for (auto figure : figureList) {
         if (auto* cube = dynamic_cast<Cube*>(figure)) {
             // Обновление углов траектории для движения куба
-            trajectory->phi += 1.0f; // Угловая скорость по оси phi
-            trajectory->theta += 1.0f; // Угловая скорость по оси theta
+            //trajectory->phi += 1.0f; // Угловая скорость по оси phi
+            //trajectory->theta += 1.0f; // Угловая скорость по оси theta
 
             // Ограничения для углов
             if (trajectory->phi > 360.0f) trajectory->phi -= 360.0f;
@@ -289,9 +343,6 @@ void MainWindow::updateScene() {
 
     // Перерисовка экрана
     update(); // Обновление окна
-#endif
-    mainPanel->repaint();
-
 }
 
 

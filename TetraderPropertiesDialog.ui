@@ -7,17 +7,17 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>149</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TetraderPropertiesDialog</string>
+   <string>Tetrader properties</string>
   </property>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>110</x>
-     <y>250</y>
+     <x>120</x>
+     <y>100</y>
      <width>156</width>
      <height>24</height>
     </rect>
@@ -30,8 +30,8 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>36</y>
-     <width>81</width>
+     <y>20</y>
+     <width>51</width>
      <height>20</height>
     </rect>
    </property>
@@ -42,9 +42,9 @@
   <widget class="QLineEdit" name="edtHeight">
    <property name="geometry">
     <rect>
-     <x>110</x>
-     <y>40</y>
-     <width>251</width>
+     <x>80</x>
+     <y>20</y>
+     <width>281</width>
      <height>21</height>
     </rect>
    </property>
@@ -53,8 +53,8 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>80</y>
-     <width>81</width>
+     <y>50</y>
+     <width>41</width>
      <height>20</height>
     </rect>
    </property>
@@ -65,11 +65,24 @@
   <widget class="QLineEdit" name="edtColor">
    <property name="geometry">
     <rect>
-     <x>110</x>
-     <y>80</y>
-     <width>251</width>
+     <x>80</x>
+     <y>50</y>
+     <width>231</width>
      <height>21</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btnColor">
+   <property name="geometry">
+    <rect>
+     <x>320</x>
+     <y>44</y>
+     <width>41</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Pick</string>
    </property>
   </widget>
  </widget>

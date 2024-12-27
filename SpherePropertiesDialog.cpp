@@ -2,6 +2,8 @@
 #include "SpherePropertiesDialog.h"
 #include "ui_SpherePropertiesDialog.h"
 #include "QDialogButtonBox"
+#include <QColorDialog>
+#include <QMessageBox>
 
 
 SpherePropertiesDialog::SpherePropertiesDialog(Sphere * sphere, QWidget *parent) :
@@ -9,6 +11,7 @@ SpherePropertiesDialog::SpherePropertiesDialog(Sphere * sphere, QWidget *parent)
     ui->setupUi(this);
     this->sphere = sphere;
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this,&SpherePropertiesDialog::OnOk);
+    connect(ui->btnColor, &QPushButton::released, this, &SpherePropertiesDialog::PickLineColor);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     ui->edtRadius->setText(QString("%1").arg(sphere->RadiusLength));
     //ui->edtSpeed->setText(QString("%1").arg(sphere->RadiusLength));
@@ -26,8 +29,25 @@ void SpherePropertiesDialog::OnOk() {
         sphere->color = Figure::ColorToInt(s);
     s = ui->edtRadius->text();
     bool ok;
-    int len = s.toUInt(&ok, 10);
-    if (ok)
-        sphere->RadiusLength = len;
+    int radius = s.toUInt(&ok, 10);
+    if (!ok ||  radius < 10 || radius > 500) {
+        QMessageBox::critical(0, "Error", "Sphere radius should be integer in range from 10 to 500");
+        return;
+    }
+    sphere->RadiusLength = radius;
     accept();
+}
+
+void SpherePropertiesDialog::PickLineColor()
+{
+    QColorDialog * dlg = new QColorDialog();
+    if (dlg->exec() == QDialog::Accepted) {
+        int r, g, b;
+        dlg->currentColor().getRgb(&r, &g, &b);
+        ui->edtColor->setText(QString( "#%1%2%3" )
+                                      .arg( r, 2, 16, QLatin1Char('0') )
+                                      .arg( g, 2, 16, QLatin1Char('0') )
+                                      .arg( b, 2, 16, QLatin1Char('0') ).toUpper());
+    }
+    delete dlg;
 }

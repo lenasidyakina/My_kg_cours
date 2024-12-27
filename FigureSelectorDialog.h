@@ -1,4 +1,6 @@
-
+//
+// Created by Ivan Sidyakin on 08.11.2024.
+//
 
 #ifndef CURS_FIGURESELECTORDIALOG_H
 #define CURS_FIGURESELECTORDIALOG_H

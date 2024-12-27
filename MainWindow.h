@@ -39,7 +39,8 @@ private slots:
     void startAnimation();
 
     void stopAnimation();
-    void move();
+    void animate();
+    bool checkTrainLength(QList<Figure *> figureList);
 
 };
 

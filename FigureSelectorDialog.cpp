@@ -1,3 +1,8 @@
+//
+// Created by Ivan Sidyakin on 08.11.2024.
+//
+
+// You may need to build the project (run Qt uic code generator) to get "ui_FigureSelectorDialog.h" resolved
 
 #include <QListWidgetItem>
 #include "FigureSelectorDialog.h"
@@ -10,7 +15,7 @@ FigureSelectorDialog::FigureSelectorDialog(QWidget *parent) :
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     new QListWidgetItem(tr("Куб"), ui->listWidget);
     new QListWidgetItem(tr("Сфера"), ui->listWidget);
-    new QListWidgetItem(tr("Пирамида"), ui->listWidget);
+    new QListWidgetItem(tr("Тетрайдер"), ui->listWidget);
     new QListWidgetItem(tr("Цилиндр"), ui->listWidget);
     _selection = 0;
     ui->listWidget->setCurrentRow(0);

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>173</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>120</x>
-     <y>260</y>
+     <x>130</x>
+     <y>130</y>
      <width>156</width>
      <height>24</height>
     </rect>
@@ -25,12 +25,15 @@
    <property name="standardButtons">
     <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
    </property>
+   <property name="centerButtons">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QLabel" name="label">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>46</y>
+     <y>20</y>
      <width>81</width>
      <height>20</height>
     </rect>
@@ -43,7 +46,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>90</y>
+     <y>50</y>
      <width>81</width>
      <height>20</height>
     </rect>
@@ -56,7 +59,7 @@
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>90</y>
+     <y>50</y>
      <width>251</width>
      <height>21</height>
     </rect>
@@ -66,7 +69,7 @@
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>50</y>
+     <y>20</y>
      <width>251</width>
      <height>21</height>
     </rect>
@@ -76,7 +79,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>130</y>
+     <y>80</y>
      <width>81</width>
      <height>20</height>
     </rect>
@@ -89,10 +92,23 @@
    <property name="geometry">
     <rect>
      <x>110</x>
-     <y>130</y>
-     <width>251</width>
+     <y>80</y>
+     <width>201</width>
      <height>21</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="btnColor">
+   <property name="geometry">
+    <rect>
+     <x>320</x>
+     <y>75</y>
+     <width>41</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Pick</string>
    </property>
   </widget>
  </widget>

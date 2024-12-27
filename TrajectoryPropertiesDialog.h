@@ -1,3 +1,6 @@
+//
+// Created by sidya on 21.11.2024.
+//
 
 #ifndef TRAJECTORYPROPERTIESDIALOG_H
 #define TRAJECTORYPROPERTIESDIALOG_H
